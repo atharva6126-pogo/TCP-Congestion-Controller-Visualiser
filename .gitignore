@@ -1,0 +1,27 @@
+## Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+## Node / Frontend
+node_modules/
+dist/
+build/
+
+## Environment
+.env
+.env.local
+
+## Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+## Local agent config
+.claude/
