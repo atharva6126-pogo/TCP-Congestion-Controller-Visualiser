@@ -4,7 +4,7 @@ import pytest
 
 from tcp_visualizer.domain import DomainError, Link, Node, NodeRole, SimulationConfig
 
-from .support import StubCongestionControlAlgorithm
+from ..support import StubCongestionControlAlgorithm
 
 
 def test_config_requires_seed_explicitly(link: Link, sender: Node, receiver: Node) -> None:

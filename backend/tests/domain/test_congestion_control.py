@@ -4,7 +4,7 @@ import pytest
 
 from tcp_visualizer.domain import CongestionControlAlgorithm
 
-from .support import StubCongestionControlAlgorithm
+from ..support import StubCongestionControlAlgorithm
 
 
 def test_interface_cannot_be_instantiated_directly() -> None:

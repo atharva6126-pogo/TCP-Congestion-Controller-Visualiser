@@ -1,4 +1,4 @@
-"""Test doubles shared across the domain layer test suite."""
+"""Test doubles shared across the backend test suite."""
 
 from tcp_visualizer.domain import CongestionControlAlgorithm
 
@@ -8,7 +8,8 @@ class StubCongestionControlAlgorithm(CongestionControlAlgorithm):
 
     Not a real TCP algorithm: it grows linearly by whatever is acknowledged
     and resets to 1 segment on loss, purely so tests can construct a valid
-    ``CongestionControlAlgorithm`` without depending on Task 3's algorithms.
+    ``CongestionControlAlgorithm`` without depending on a real algorithm
+    implementation (Tahoe, Reno, ...).
     """
 
     def __init__(self) -> None:

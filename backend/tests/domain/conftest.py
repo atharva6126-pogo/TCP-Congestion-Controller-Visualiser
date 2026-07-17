@@ -4,7 +4,7 @@ import pytest
 
 from tcp_visualizer.domain import Link, Node, NodeRole, SimulationConfig
 
-from .support import StubCongestionControlAlgorithm
+from ..support import StubCongestionControlAlgorithm
 
 
 @pytest.fixture
