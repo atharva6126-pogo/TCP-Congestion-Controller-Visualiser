@@ -1,28 +1,109 @@
+import { useCallback, useState } from 'react'
+
+import { useReplayClock } from '../../features/replay/useReplayClock'
+import { StatsPanel } from '../../features/stats/StatsPanel'
+import { useGlobalShortcuts } from '../../lib/useGlobalShortcuts'
+import { Dialog } from '../ui/Dialog'
 import { ConfigRail } from './ConfigRail'
+import { ConfigRailContent } from './ConfigRailContent'
+import { HelpOverlay } from './HelpOverlay'
 import { Stage } from './Stage'
 import { StatsRail } from './StatsRail'
 import { TransportBar } from './TransportBar'
 
 /**
- * Three-rail workspace grid with a persistent transport bar
- * (DESIGN_SPEC §4, responsive behavior §17):
+ * Three-rail workspace grid with a persistent transport bar (§4, §17):
  *
  * - ≥1280px (xl): config rail · stage · stats rail
- * - 1024–1279px (lg): config rail · stage (stats rail hidden; its tabbed
- *   fallback arrives with the stats task)
- * - <1024px: stage only (rails become drawers in a later task)
+ * - 1024–1279px (lg): config rail · stage; stats reachable via drawer
+ * - <1024px: stage only; both rails become edge drawers
+ *
+ * The config rail collapses to a strip (⌘\) to hand the stage the full
+ * width during presentation.
  */
 export function AppShell() {
+  const clock = useReplayClock()
+  const [configCollapsed, setConfigCollapsed] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [configDrawerOpen, setConfigDrawerOpen] = useState(false)
+  const [statsDrawerOpen, setStatsDrawerOpen] = useState(false)
+
+  const toggleHelp = useCallback(() => {
+    setHelpOpen((open) => !open)
+  }, [])
+
+  const toggleConfigRail = useCallback(() => {
+    setConfigCollapsed((collapsed) => !collapsed)
+  }, [])
+
+  const toggleReplay = useCallback(() => {
+    if (clock.duration === 0) {
+      return
+    }
+    if (clock.isPlaying) {
+      clock.pause()
+    } else {
+      clock.play()
+    }
+  }, [clock])
+
+  useGlobalShortcuts({ toggleHelp, toggleConfigRail, toggleReplay })
+
+  const columns = configCollapsed
+    ? 'lg:grid-cols-[48px_minmax(0,1fr)] xl:grid-cols-[48px_minmax(0,1fr)_300px]'
+    : 'lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_300px]'
+
   return (
     <div className="grid h-dvh grid-rows-[minmax(0,1fr)_auto]">
-      <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+      <div
+        className={`grid min-h-0 grid-cols-1 transition-[grid-template-columns] duration-200 ease-out ${columns}`}
+      >
         <div className="hidden lg:block">
-          <ConfigRail />
+          <ConfigRail collapsed={configCollapsed} onToggleCollapsed={toggleConfigRail} />
         </div>
         <Stage />
         <StatsRail />
       </div>
-      <TransportBar />
+      <TransportBar
+        onOpenConfigDrawer={() => {
+          setConfigDrawerOpen(true)
+        }}
+        onOpenStatsDrawer={() => {
+          setStatsDrawerOpen(true)
+        }}
+        onOpenHelp={() => {
+          setHelpOpen(true)
+        }}
+      />
+
+      <HelpOverlay
+        open={helpOpen}
+        onClose={() => {
+          setHelpOpen(false)
+        }}
+      />
+      <Dialog
+        open={configDrawerOpen}
+        onClose={() => {
+          setConfigDrawerOpen(false)
+        }}
+        label="Simulation configuration"
+        variant="drawer-left"
+      >
+        <ConfigRailContent />
+      </Dialog>
+      <Dialog
+        open={statsDrawerOpen}
+        onClose={() => {
+          setStatsDrawerOpen(false)
+        }}
+        label="Run statistics"
+        variant="drawer-right"
+      >
+        <div className="p-4">
+          <StatsPanel />
+        </div>
+      </Dialog>
     </div>
   )
 }

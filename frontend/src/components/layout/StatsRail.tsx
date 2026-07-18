@@ -1,18 +1,17 @@
-import { SectionLabel } from '../ui/SectionLabel'
+import { StatsPanel } from '../../features/stats/StatsPanel'
 
 /**
- * Right rail — live statistics and the event inspector (DESIGN_SPEC §4).
- *
- * Foundation scope: the region and its label. Stat tiles (with their §11
- * em-dash empty state) and the inspector arrive with the stats task.
+ * Right rail — live statistics and the event inspector (§4). Visible at
+ * xl and up; smaller viewports reach the same content through the stats
+ * drawer (§17).
  */
 export function StatsRail() {
   return (
     <aside
       aria-label="Run statistics"
-      className="hidden h-full flex-col gap-3 border-l border-edge bg-surface p-4 xl:flex"
+      className="hidden h-full flex-col border-l border-edge bg-surface p-4 xl:flex"
     >
-      <SectionLabel>Statistics</SectionLabel>
+      <StatsPanel />
     </aside>
   )
 }

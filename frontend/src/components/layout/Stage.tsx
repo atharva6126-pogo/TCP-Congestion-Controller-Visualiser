@@ -1,9 +1,9 @@
+import { Kbd } from '../ui/Kbd'
+
 /**
- * Center stage — the visualization surface (DESIGN_SPEC §4).
- *
- * Foundation scope: renders the designed first-run empty state (§11).
- * The packet lane, cwnd chart, and small multiples mount here in later
- * tasks.
+ * Center stage — the visualization surface (§4). Foundation scope:
+ * renders the designed first-run empty state (§11). The packet lane,
+ * cwnd chart, and small multiples mount here in later tasks.
  */
 export function Stage() {
   return (
@@ -11,6 +11,9 @@ export function Stage() {
       <div className="flex max-w-md flex-col items-center gap-6 text-center">
         <SawtoothSketch />
         <p className="text-section text-fg-muted">Simulate how TCP decides how fast to send.</p>
+        <p className="text-label text-fg-faint">
+          Press <Kbd>?</Kbd> for keyboard shortcuts
+        </p>
       </div>
     </main>
   )

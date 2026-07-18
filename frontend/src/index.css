@@ -65,4 +65,63 @@
     outline: 2px solid var(--algo-tahoe);
     outline-offset: 1px;
   }
+
+  /* UI motion is subtle and optional (§10). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* The transport bar's timeline scrubber (§4); a native range input so
+     it is a proper slider with arrow-key stepping (§18). */
+  .transport-scrubber {
+    appearance: none;
+    height: 4px;
+    border-radius: calc(infinity * 1px);
+    background: var(--surface-raised);
+  }
+
+  .transport-scrubber::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--fg-muted);
+    transition: background-color 150ms ease-out;
+  }
+
+  .transport-scrubber::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: none;
+    border-radius: 50%;
+    background: var(--fg-muted);
+    transition: background-color 150ms ease-out;
+  }
+
+  .transport-scrubber:not(:disabled)::-webkit-slider-thumb {
+    cursor: pointer;
+  }
+
+  .transport-scrubber:not(:disabled):hover::-webkit-slider-thumb {
+    background: var(--fg-primary);
+  }
+
+  .transport-scrubber:not(:disabled):hover::-moz-range-thumb {
+    background: var(--fg-primary);
+  }
+
+  .transport-scrubber:disabled::-webkit-slider-thumb {
+    background: var(--fg-faint);
+  }
+
+  .transport-scrubber:disabled::-moz-range-thumb {
+    background: var(--fg-faint);
+  }
 }
