@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+/*
+ * Map design tokens into Tailwind's theme so utilities stay semantic:
+ * bg-canvas, bg-surface, bg-raised, border-edge, text-fg, text-fg-muted,
+ * text-fg-faint, text-danger, font-sans, font-mono, text-ui, text-label…
+ *
+ * Type scale (DESIGN_SPEC §8): 22/28 title · 15/22 section · 13/20 body ·
+ * 12/16 axis · 11/14 caption. Spacing uses Tailwind's default 4px scale,
+ * restricted by convention to 4/8/12/16/24/32/48 (§9).
+ */
+@theme inline {
+  --color-canvas: var(--surface-canvas);
+  --color-surface: var(--surface-base);
+  --color-raised: var(--surface-raised);
+  --color-edge: var(--border-hairline);
+
+  --color-fg: var(--fg-primary);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-faint: var(--fg-faint);
+
+  --color-danger: var(--status-danger);
+  --color-success: var(--status-success);
+
+  --color-algo-tahoe: var(--algo-tahoe);
+  --color-algo-reno: var(--algo-reno);
+  --color-algo-new-reno: var(--algo-new-reno);
+  --color-algo-cubic: var(--algo-cubic);
+
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  --text-title: 1.375rem;
+  --text-title--line-height: 1.75rem;
+  --text-section: 0.9375rem;
+  --text-section--line-height: 1.375rem;
+  --text-ui: 0.8125rem;
+  --text-ui--line-height: 1.25rem;
+  --text-axis: 0.75rem;
+  --text-axis--line-height: 1rem;
+  --text-label: 0.6875rem;
+  --text-label--line-height: 0.875rem;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  html[data-theme='light'] {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ui text-fg antialiased;
+  }
+
+  /* Every number in the product renders in mono with stable widths (§8). */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--algo-tahoe);
+    outline-offset: 1px;
+  }
+}

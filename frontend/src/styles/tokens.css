@@ -1,0 +1,48 @@
+/*
+ * Design tokens — DESIGN_SPEC.md §7 (color), §8 (typography), §9 (spacing).
+ *
+ * Dark is the designed theme; light is derived. Semantic variables flip
+ * with [data-theme]; algorithm identity colors and loss semantics are
+ * fixed forever and never vary by theme.
+ */
+
+:root {
+  /* Surfaces */
+  --surface-canvas: #0e1116;
+  --surface-base: #161b22;
+  --surface-raised: #1d242e;
+  --border-hairline: #2a313c;
+
+  /* Foreground */
+  --fg-primary: #e6edf3;
+  --fg-muted: #8b98a9;
+  --fg-faint: #5a6675;
+
+  /* Semantics */
+  --status-danger: #f85149;
+  --status-success: #3fb950;
+
+  /* Algorithm identity (fixed; colorblind-safe, Okabe–Ito derived) */
+  --algo-tahoe: #56b4e9;
+  --algo-reno: #e69f00;
+  --algo-new-reno: #009e73;
+  --algo-cubic: #cc79a7;
+
+  /* Phase band tints applied at 6–8% opacity over the chart canvas */
+  --phase-slow-start: #56b4e9;
+  --phase-fast-recovery: #e69f00;
+}
+
+[data-theme='light'] {
+  --surface-canvas: #f6f8fa;
+  --surface-base: #ffffff;
+  --surface-raised: #ffffff;
+  --border-hairline: #d0d7de;
+
+  --fg-primary: #1f2328;
+  --fg-muted: #59636e;
+  --fg-faint: #818b98;
+
+  --status-danger: #d1242f;
+  --status-success: #1a7f37;
+}
