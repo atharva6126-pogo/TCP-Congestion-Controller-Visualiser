@@ -21,7 +21,9 @@ from ..conftest import MakeConfig
 def ack_full_window(tahoe: TcpTahoe) -> None:
     """Acknowledge one full window of single segments, as one RTT round would."""
     for _ in range(math.floor(tahoe.congestion_window_segments)):
-        tahoe.on_signal(AckReceived(acknowledged_segments=1.0, current_time=0.0))
+        tahoe.on_signal(
+            AckReceived(acknowledged_segments=1.0, current_time=0.0, ack_sequence_number=0)
+        )
 
 
 class TestInitialState:
@@ -44,7 +46,9 @@ class TestSlowStart:
     def test_each_ack_grows_the_window_by_the_amount_acknowledged(self) -> None:
         tahoe = TcpTahoe()
 
-        tahoe.on_signal(AckReceived(acknowledged_segments=1.0, current_time=0.0))
+        tahoe.on_signal(
+            AckReceived(acknowledged_segments=1.0, current_time=0.0, ack_sequence_number=0)
+        )
 
         assert tahoe.congestion_window_segments == 2.0
 
@@ -64,7 +68,9 @@ class TestTransitionToCongestionAvoidance:
         tahoe = TcpTahoe(initial_ssthresh_segments=4.0)
 
         for _ in range(3):
-            tahoe.on_signal(AckReceived(acknowledged_segments=1.0, current_time=0.0))
+            tahoe.on_signal(
+                AckReceived(acknowledged_segments=1.0, current_time=0.0, ack_sequence_number=0)
+            )
 
         assert tahoe.congestion_window_segments == 4.0
         assert tahoe.phase is TahoePhase.CONGESTION_AVOIDANCE
@@ -72,7 +78,9 @@ class TestTransitionToCongestionAvoidance:
     def test_growth_is_approximately_linear_after_the_transition(self) -> None:
         tahoe = TcpTahoe(initial_ssthresh_segments=8.0)
         while tahoe.phase is TahoePhase.SLOW_START:
-            tahoe.on_signal(AckReceived(acknowledged_segments=1.0, current_time=0.0))
+            tahoe.on_signal(
+                AckReceived(acknowledged_segments=1.0, current_time=0.0, ack_sequence_number=0)
+            )
         assert tahoe.congestion_window_segments == 8.0
 
         ack_full_window(tahoe)
@@ -89,7 +97,7 @@ class TestLossResponse:
             ack_full_window(tahoe)
         assert tahoe.congestion_window_segments == 16.0
 
-        tahoe.on_signal(Timeout(current_time=1.0))
+        tahoe.on_signal(Timeout(current_time=1.0, highest_transmitted_sequence_number=0))
 
         assert tahoe.ssthresh_segments == 8.0
         assert tahoe.congestion_window_segments == 1.0
@@ -98,7 +106,7 @@ class TestLossResponse:
     def test_ssthresh_never_drops_below_two_segments(self) -> None:
         tahoe = TcpTahoe()
 
-        tahoe.on_signal(Timeout(current_time=0.0))
+        tahoe.on_signal(Timeout(current_time=0.0, highest_transmitted_sequence_number=0))
 
         assert tahoe.ssthresh_segments == 2.0
 
@@ -110,8 +118,10 @@ class TestLossResponse:
             ack_full_window(on_timeout)
             ack_full_window(on_duplicate)
 
-        on_timeout.on_signal(Timeout(current_time=1.0))
-        on_duplicate.on_signal(TripleDuplicateAck(current_time=1.0))
+        on_timeout.on_signal(Timeout(current_time=1.0, highest_transmitted_sequence_number=0))
+        on_duplicate.on_signal(
+            TripleDuplicateAck(current_time=1.0, highest_transmitted_sequence_number=0)
+        )
 
         assert on_timeout.congestion_window_segments == on_duplicate.congestion_window_segments
         assert on_timeout.ssthresh_segments == on_duplicate.ssthresh_segments
@@ -120,7 +130,7 @@ class TestLossResponse:
         tahoe = TcpTahoe(initial_ssthresh_segments=1000.0)
         for _ in range(4):
             ack_full_window(tahoe)
-        tahoe.on_signal(Timeout(current_time=1.0))
+        tahoe.on_signal(Timeout(current_time=1.0, highest_transmitted_sequence_number=0))
         assert tahoe.ssthresh_segments == 8.0
 
         observed = [tahoe.congestion_window_segments]
@@ -149,7 +159,7 @@ class TestKnownWindowEvolution:
         for previous, current in zip(per_round[3:], per_round[4:]):
             assert 0.5 < current - previous <= 1.0
 
-        tahoe.on_signal(Timeout(current_time=1.0))
+        tahoe.on_signal(Timeout(current_time=1.0, highest_transmitted_sequence_number=0))
         assert tahoe.congestion_window_segments == 1.0
         assert tahoe.ssthresh_segments == pytest.approx(per_round[-1] / 2)
 

@@ -19,6 +19,14 @@ Loss classification (see ADR 0002): a loss detected while at least three
 those packets generate the duplicate acknowledgements fast retransmit
 needs — otherwise as ``Timeout``. Both are detected one round trip after
 the send; the simulator does not model a separate, longer RTO delay.
+
+Sequence bookkeeping (see ADR 0003): the engine tracks two transport-level
+observations and reports them on signals — the cumulative acknowledgment
+point (contiguous prefix of the stream delivered so far, mirroring the TCP
+header's Acknowledgment Number) on ``AckReceived``, and the highest
+sequence transmitted (``snd.nxt``) on both loss signals. These let
+Reno-family algorithms implement RFC 6582 recovery episodes without the
+engine knowing anything about recovery.
 """
 
 import math
@@ -48,6 +56,47 @@ class _OnPacketComplete(Protocol):
     def __call__(self, sequence_index: int, *, delivered: bool) -> None: ...
 
 
+class _SequenceTracker:
+    """Sender-side sequence bookkeeping shared by the transmission processes.
+
+    Tracks the two transport-level observations reported on signals: the
+    highest sequence transmitted so far and the cumulative acknowledgment
+    point (the contiguous prefix of the stream delivered so far).
+    """
+
+    def __init__(self, *, total_bytes: int, maximum_segment_size_bytes: int) -> None:
+        self._total_bytes = total_bytes
+        self._mss = maximum_segment_size_bytes
+        self._delivered = [False] * math.ceil(total_bytes / maximum_segment_size_bytes)
+        self._contiguous_segments = 0
+        self._highest_transmitted = 0
+
+    def segment_bounds(self, sequence_index: int) -> tuple[int, int]:
+        """The byte range ``[start, end)`` occupied by ``sequence_index``."""
+        start = sequence_index * self._mss
+        return start, min(start + self._mss, self._total_bytes)
+
+    def record_transmission(self, sequence_index: int) -> None:
+        _, end = self.segment_bounds(sequence_index)
+        self._highest_transmitted = max(self._highest_transmitted, end)
+
+    def record_delivery(self, sequence_index: int) -> None:
+        self._delivered[sequence_index] = True
+        while (
+            self._contiguous_segments < len(self._delivered)
+            and self._delivered[self._contiguous_segments]
+        ):
+            self._contiguous_segments += 1
+
+    @property
+    def ack_sequence_number(self) -> int:
+        return min(self._contiguous_segments * self._mss, self._total_bytes)
+
+    @property
+    def highest_transmitted_sequence_number(self) -> int:
+        return self._highest_transmitted
+
+
 def run_simulation(config: SimulationConfig) -> SimulationResult:
     """Run ``config`` to completion and return its full, ordered event timeline."""
     rng = random.Random(config.seed)
@@ -69,6 +118,9 @@ def _sender(
 ) -> Generator[simpy.Event, None, None]:
     mss = config.maximum_segment_size_bytes
     total_segments = math.ceil(config.total_bytes_to_transfer / mss)
+    tracker = _SequenceTracker(
+        total_bytes=config.total_bytes_to_transfer, maximum_segment_size_bytes=mss
+    )
     pending: deque[int] = deque(range(total_segments))
     in_flight = 0
     completed = 0
@@ -102,6 +154,7 @@ def _sender(
                     events,
                     sequence_index,
                     mss,
+                    tracker,
                     packets_in_flight,
                     on_packet_complete,
                 )
@@ -118,12 +171,14 @@ def _transmit_packet(
     events: list[SimulationEvent],
     sequence_index: int,
     mss: int,
+    tracker: _SequenceTracker,
     packets_in_flight: Callable[[], int],
     on_complete: _OnPacketComplete,
 ) -> Generator[simpy.Event, None, None]:
-    bytes_before = sequence_index * mss
-    size_bytes = min(mss, config.total_bytes_to_transfer - bytes_before)
+    bytes_before, bytes_end = tracker.segment_bounds(sequence_index)
+    size_bytes = bytes_end - bytes_before
     packet = Packet(sequence_number=bytes_before, size_bytes=size_bytes)
+    tracker.record_transmission(sequence_index)
 
     events.append(
         SimulationEvent(
@@ -146,9 +201,15 @@ def _transmit_packet(
         other_packets_in_flight = packets_in_flight() - 1
         signal: CongestionSignal
         if other_packets_in_flight >= _FAST_RETRANSMIT_MINIMUM_OTHER_PACKETS_IN_FLIGHT:
-            signal = TripleDuplicateAck(current_time=env.now)
+            signal = TripleDuplicateAck(
+                current_time=env.now,
+                highest_transmitted_sequence_number=tracker.highest_transmitted_sequence_number,
+            )
         else:
-            signal = Timeout(current_time=env.now)
+            signal = Timeout(
+                current_time=env.now,
+                highest_transmitted_sequence_number=tracker.highest_transmitted_sequence_number,
+            )
         events.append(
             SimulationEvent(
                 timestamp=env.now,
@@ -169,7 +230,14 @@ def _transmit_packet(
         )
         on_complete(sequence_index, delivered=False)
     else:
-        ack = AckReceived(acknowledged_segments=size_bytes / mss, current_time=env.now)
+        # Record the delivery first so the acknowledgment point includes
+        # the arriving segment, as a real cumulative ACK would.
+        tracker.record_delivery(sequence_index)
+        ack = AckReceived(
+            acknowledged_segments=size_bytes / mss,
+            current_time=env.now,
+            ack_sequence_number=tracker.ack_sequence_number,
+        )
         events.append(
             SimulationEvent(
                 timestamp=env.now,

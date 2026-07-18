@@ -39,7 +39,7 @@ def test_congestion_window_changed_event_carries_cwnd() -> None:
 
 
 def test_packet_lost_event_records_the_loss_signal(sender: Node) -> None:
-    signal = Timeout(current_time=1.0)
+    signal = Timeout(current_time=1.0, highest_transmitted_sequence_number=0)
 
     event = SimulationEvent(
         timestamp=1.0,

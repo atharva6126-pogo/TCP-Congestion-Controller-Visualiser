@@ -21,7 +21,9 @@ from ..conftest import MakeConfig
 def ack_full_window(reno: TcpReno) -> None:
     """Acknowledge one full window of single segments, as one RTT round would."""
     for _ in range(math.floor(reno.congestion_window_segments)):
-        reno.on_signal(AckReceived(acknowledged_segments=1.0, current_time=0.0))
+        reno.on_signal(
+            AckReceived(acknowledged_segments=1.0, current_time=0.0, ack_sequence_number=0)
+        )
 
 
 def grown_reno(rounds: int = 4) -> TcpReno:
@@ -62,7 +64,9 @@ class TestGrowth:
     def test_congestion_avoidance_grows_approximately_linearly(self) -> None:
         reno = TcpReno(initial_ssthresh_segments=8.0)
         while reno.phase is CongestionPhase.SLOW_START:
-            reno.on_signal(AckReceived(acknowledged_segments=1.0, current_time=0.0))
+            reno.on_signal(
+                AckReceived(acknowledged_segments=1.0, current_time=0.0, ack_sequence_number=0)
+            )
         assert reno.congestion_window_segments == 8.0
 
         ack_full_window(reno)
@@ -75,7 +79,7 @@ class TestFastRecovery:
         reno = grown_reno(rounds=4)
         assert reno.congestion_window_segments == 16.0
 
-        reno.on_signal(TripleDuplicateAck(current_time=1.0))
+        reno.on_signal(TripleDuplicateAck(current_time=1.0, highest_transmitted_sequence_number=0))
 
         assert reno.ssthresh_segments == 8.0
         assert reno.congestion_window_segments == 8.0
@@ -85,14 +89,14 @@ class TestFastRecovery:
         reno = TcpReno()
         assert reno.congestion_window_segments == 1.0
 
-        reno.on_signal(TripleDuplicateAck(current_time=0.0))
+        reno.on_signal(TripleDuplicateAck(current_time=0.0, highest_transmitted_sequence_number=0))
 
         assert reno.ssthresh_segments == 2.0
         assert reno.congestion_window_segments == 2.0
 
     def test_growth_continues_linearly_after_fast_recovery(self) -> None:
         reno = grown_reno(rounds=4)
-        reno.on_signal(TripleDuplicateAck(current_time=1.0))
+        reno.on_signal(TripleDuplicateAck(current_time=1.0, highest_transmitted_sequence_number=0))
         assert reno.congestion_window_segments == 8.0
 
         ack_full_window(reno)
@@ -106,7 +110,7 @@ class TestTimeout:
         reno = grown_reno(rounds=4)
         assert reno.congestion_window_segments == 16.0
 
-        reno.on_signal(Timeout(current_time=1.0))
+        reno.on_signal(Timeout(current_time=1.0, highest_transmitted_sequence_number=0))
 
         assert reno.ssthresh_segments == 8.0
         assert reno.congestion_window_segments == 1.0
@@ -114,7 +118,7 @@ class TestTimeout:
 
     def test_recovery_after_timeout_slow_starts_to_the_new_ssthresh(self) -> None:
         reno = grown_reno(rounds=4)
-        reno.on_signal(Timeout(current_time=1.0))
+        reno.on_signal(Timeout(current_time=1.0, highest_transmitted_sequence_number=0))
 
         observed = [reno.congestion_window_segments]
         for _ in range(3):
@@ -133,11 +137,13 @@ class TestRenoVersusTahoe:
         for _ in range(4):
             ack_full_window(reno)
             for _ in range(math.floor(tahoe.congestion_window_segments)):
-                tahoe.on_signal(AckReceived(acknowledged_segments=1.0, current_time=0.0))
+                tahoe.on_signal(
+                    AckReceived(acknowledged_segments=1.0, current_time=0.0, ack_sequence_number=0)
+                )
         assert reno.congestion_window_segments == tahoe.congestion_window_segments == 16.0
 
-        reno.on_signal(TripleDuplicateAck(current_time=1.0))
-        tahoe.on_signal(TripleDuplicateAck(current_time=1.0))
+        reno.on_signal(TripleDuplicateAck(current_time=1.0, highest_transmitted_sequence_number=0))
+        tahoe.on_signal(TripleDuplicateAck(current_time=1.0, highest_transmitted_sequence_number=0))
 
         assert reno.congestion_window_segments == 8.0
         assert tahoe.congestion_window_segments == 1.0
@@ -147,10 +153,12 @@ class TestRenoVersusTahoe:
         tahoe = TcpTahoe(initial_ssthresh_segments=1000.0)
         for _ in range(4):
             for _ in range(math.floor(tahoe.congestion_window_segments)):
-                tahoe.on_signal(AckReceived(acknowledged_segments=1.0, current_time=0.0))
+                tahoe.on_signal(
+                    AckReceived(acknowledged_segments=1.0, current_time=0.0, ack_sequence_number=0)
+                )
 
-        reno.on_signal(Timeout(current_time=1.0))
-        tahoe.on_signal(Timeout(current_time=1.0))
+        reno.on_signal(Timeout(current_time=1.0, highest_transmitted_sequence_number=0))
+        tahoe.on_signal(Timeout(current_time=1.0, highest_transmitted_sequence_number=0))
 
         assert reno.congestion_window_segments == tahoe.congestion_window_segments == 1.0
         assert reno.ssthresh_segments == tahoe.ssthresh_segments == 8.0
@@ -170,7 +178,7 @@ class TestKnownWindowEvolution:
             assert 0.5 < current - previous <= 1.0
 
         before_loss = reno.congestion_window_segments
-        reno.on_signal(TripleDuplicateAck(current_time=1.0))
+        reno.on_signal(TripleDuplicateAck(current_time=1.0, highest_transmitted_sequence_number=0))
 
         assert reno.congestion_window_segments == pytest.approx(before_loss / 2)
         assert reno.phase is CongestionPhase.CONGESTION_AVOIDANCE
