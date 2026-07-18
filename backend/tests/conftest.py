@@ -1,4 +1,4 @@
-"""Shared fixtures for the simulation engine test suite."""
+"""Fixtures shared across the backend test suite."""
 
 from typing import Protocol
 
@@ -6,7 +6,7 @@ import pytest
 
 from tcp_visualizer.domain import Link, Node, NodeRole, SimulationConfig
 
-from ..support import StubCongestionControlAlgorithm
+from .support import StubCongestionControlAlgorithm
 
 
 class MakeConfig(Protocol):

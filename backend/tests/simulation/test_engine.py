@@ -3,7 +3,7 @@
 from tcp_visualizer.domain import SimulationEventType
 from tcp_visualizer.simulation import run_simulation
 
-from .conftest import MakeConfig
+from ..conftest import MakeConfig
 
 
 def test_zero_loss_delivers_every_segment_exactly_once(make_config: MakeConfig) -> None:
