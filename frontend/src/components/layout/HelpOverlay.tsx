@@ -29,9 +29,7 @@ export function HelpOverlay({ open, onClose }: HelpOverlayProps) {
             </div>
           ))}
         </dl>
-        <p className="text-label text-fg-faint">
-          Replay stepping shortcuts arrive together with replay.
-        </p>
+        <p className="text-label text-fg-faint">More shortcuts arrive with their features.</p>
       </div>
     </Dialog>
   )

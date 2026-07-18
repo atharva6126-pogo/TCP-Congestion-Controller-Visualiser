@@ -4,6 +4,8 @@ interface GlobalShortcutHandlers {
   toggleHelp: () => void
   toggleConfigRail: () => void
   toggleReplay: () => void
+  stepForward: () => void
+  stepBackward: () => void
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -15,11 +17,12 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 /**
  * Global keyboard shortcuts (DESIGN_SPEC §6). Skips events aimed at
- * editable controls so typing never triggers workspace actions; Space is
- * additionally left alone on buttons, where it is activation.
+ * editable controls so typing and slider-arrowing never trigger
+ * workspace actions; Space is additionally left alone on buttons,
+ * where it is activation.
  */
 export function useGlobalShortcuts(handlers: GlobalShortcutHandlers): void {
-  const { toggleHelp, toggleConfigRail, toggleReplay } = handlers
+  const { toggleHelp, toggleConfigRail, toggleReplay, stepForward, stepBackward } = handlers
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -35,6 +38,12 @@ export function useGlobalShortcuts(handlers: GlobalShortcutHandlers): void {
       } else if (event.key === ' ' && !(event.target instanceof HTMLButtonElement)) {
         event.preventDefault()
         toggleReplay()
+      } else if (event.key === 'ArrowRight' && !event.shiftKey) {
+        event.preventDefault()
+        stepForward()
+      } else if (event.key === 'ArrowLeft' && !event.shiftKey) {
+        event.preventDefault()
+        stepBackward()
       }
     }
 
@@ -42,5 +51,5 @@ export function useGlobalShortcuts(handlers: GlobalShortcutHandlers): void {
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [toggleHelp, toggleConfigRail, toggleReplay])
+  }, [toggleHelp, toggleConfigRail, toggleReplay, stepForward, stepBackward])
 }

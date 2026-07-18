@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 
-import { useReplayClock } from '../../features/replay/useReplayClock'
+import { useReplayControls } from '../../features/replay/useReplayControls'
 import { StatsPanel } from '../../features/stats/StatsPanel'
 import { useGlobalShortcuts } from '../../lib/useGlobalShortcuts'
 import { Dialog } from '../ui/Dialog'
@@ -22,7 +22,7 @@ import { TransportBar } from './TransportBar'
  * width during presentation.
  */
 export function AppShell() {
-  const clock = useReplayClock()
+  const clock = useReplayControls()
   const [configCollapsed, setConfigCollapsed] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false)
@@ -47,7 +47,13 @@ export function AppShell() {
     }
   }, [clock])
 
-  useGlobalShortcuts({ toggleHelp, toggleConfigRail, toggleReplay })
+  useGlobalShortcuts({
+    toggleHelp,
+    toggleConfigRail,
+    toggleReplay,
+    stepForward: clock.stepForward,
+    stepBackward: clock.stepBackward,
+  })
 
   const columns = configCollapsed
     ? 'lg:grid-cols-[48px_minmax(0,1fr)] xl:grid-cols-[48px_minmax(0,1fr)_300px]'

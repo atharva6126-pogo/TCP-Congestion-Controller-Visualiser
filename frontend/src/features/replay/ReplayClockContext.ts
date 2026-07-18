@@ -1,5 +1,5 @@
 import { createContext } from 'react'
 
-import type { ReplayClock } from './replayClock'
+import type { ReplayEngine } from './replayEngine'
 
-export const ReplayClockContext = createContext<ReplayClock | null>(null)
+export const ReplayClockContext = createContext<ReplayEngine | null>(null)
