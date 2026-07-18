@@ -29,6 +29,7 @@ export function useReplayControls(): ReplayControlsWithState {
       play: engine.play,
       pause: engine.pause,
       seek: engine.seek,
+      getCurrentTime: engine.getCurrentTime,
       setSpeed: engine.setSpeed,
       loadTimeline: engine.loadTimeline,
       stepForward: engine.stepForward,

@@ -1,12 +1,20 @@
 import { REPLAY_SPEEDS } from '../../features/replay/replayClock'
 import { useReplayClock } from '../../features/replay/useReplayClock'
 import { IconButton } from '../ui/IconButton'
-import { ColumnsGlyph, PauseGlyph, PlayGlyph, QuestionGlyph, SlidersGlyph } from './glyphs'
+import {
+  ColumnsGlyph,
+  PauseGlyph,
+  PlayGlyph,
+  QuestionGlyph,
+  ShareGlyph,
+  SlidersGlyph,
+} from './glyphs'
 
 interface TransportBarProps {
   onOpenConfigDrawer: () => void
   onOpenStatsDrawer: () => void
   onOpenHelp: () => void
+  onOpenExport: () => void
 }
 
 const NO_RUN_HINT = 'Run a simulation to enable replay'
@@ -22,6 +30,7 @@ export function TransportBar({
   onOpenConfigDrawer,
   onOpenStatsDrawer,
   onOpenHelp,
+  onOpenExport,
 }: TransportBarProps) {
   const { currentTime, duration, isPlaying, speed, play, pause, seek, setSpeed } = useReplayClock()
   const hasRun = duration > 0
@@ -29,7 +38,7 @@ export function TransportBar({
   return (
     <footer
       aria-label="Replay transport"
-      className="flex h-14 items-center gap-3 border-t border-edge bg-surface px-4"
+      className="flex h-14 items-center gap-2 border-t border-edge bg-surface px-3 sm:gap-3 sm:px-4"
     >
       <div className="flex gap-1 lg:hidden">
         <IconButton label="Open configuration" onClick={onOpenConfigDrawer}>
@@ -51,10 +60,12 @@ export function TransportBar({
         {isPlaying ? <PauseGlyph /> : <PlayGlyph />}
       </IconButton>
 
+      {/* Below 640px the bar keeps only what replay cannot do without;
+          speed stays reachable from the keyboard (§6, §17). */}
       <div
         role="group"
         aria-label="Replay speed"
-        className="flex overflow-hidden rounded border border-edge"
+        className="hidden overflow-hidden rounded border border-edge sm:flex"
       >
         {REPLAY_SPEEDS.map((value) => (
           <button
@@ -90,7 +101,13 @@ export function TransportBar({
         }}
       />
 
-      <span className="font-mono text-axis text-fg-muted">t = {currentTime.toFixed(3)} s</span>
+      <span className="shrink-0 font-mono text-axis text-fg-muted">
+        t = {currentTime.toFixed(3)} s
+      </span>
+
+      <IconButton label="Share and export" onClick={onOpenExport}>
+        <ShareGlyph />
+      </IconButton>
 
       <IconButton label="Keyboard shortcuts" onClick={onOpenHelp}>
         <QuestionGlyph />

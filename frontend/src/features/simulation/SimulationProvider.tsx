@@ -6,12 +6,13 @@ import { postSimulation } from '../../lib/api/simulations'
 import type { SimulationRequest, SimulationRun } from '../../lib/api/simulations'
 import { mergeTimelines } from '../comparison/comparisonSeries'
 import { useReplayControls } from '../replay/useReplayControls'
-import { ALGORITHM_ORDER } from './algorithmColors'
-import { DEFAULT_CONFIG, toSimulationRequest, validateConfig } from './config'
+import { toSimulationRequest, validateConfig } from './config'
 import type { ConfigField, SimulationFormConfig } from './config'
 import { SimulationContext } from './SimulationContext'
 import type { ComparisonView, SimulationFailure, ViewMode } from './SimulationContext'
 import type { AlgorithmName } from './timeline'
+import { ALGORITHM_ORDER } from './algorithmColors'
+import { buildShareSearch, hasSharedState, parseSharedState } from './urlState'
 
 /** Runs faster than this show no indicator at all (DESIGN_SPEC §12). */
 const LOADING_INDICATOR_DELAY_MS = 300
@@ -31,15 +32,26 @@ function conditionsKey(request: SimulationRequest): string {
  * same endpoint as a single run. Completed runs are cached by request,
  * so switching focus, changing view, or leaving and re-entering
  * comparison never re-runs work already done.
+ *
+ * The workspace state is mirrored into the URL (§6). A link therefore
+ * always describes what is on screen, and opening one restores that
+ * configuration and runs it.
  */
 export function SimulationProvider({ children }: { children: ReactNode }) {
   const { loadTimeline, play } = useReplayControls()
-  const [config, setConfig] = useState<SimulationFormConfig>(DEFAULT_CONFIG)
-  const [mode, setMode] = useState<ViewMode>('single')
-  const [comparisonAlgorithms, setComparisonAlgorithms] =
-    useState<readonly AlgorithmName[]>(ALGORITHM_ORDER)
-  const [comparisonView, setComparisonView] = useState<ComparisonView>('overlay')
-  const [focusedAlgorithm, setFocusedAlgorithm] = useState<AlgorithmName>(DEFAULT_CONFIG.algorithm)
+  // Read once: the URL seeds the workspace, and from then on the
+  // workspace writes the URL.
+  const [initialState] = useState(() => parseSharedState(window.location.search))
+  const [openedFromLink] = useState(() => hasSharedState(window.location.search))
+  const [config, setConfig] = useState<SimulationFormConfig>(initialState.config)
+  const [mode, setMode] = useState<ViewMode>(initialState.mode)
+  const [comparisonAlgorithms, setComparisonAlgorithms] = useState<readonly AlgorithmName[]>(
+    initialState.comparisonAlgorithms,
+  )
+  const [comparisonView, setComparisonView] = useState<ComparisonView>(initialState.comparisonView)
+  const [focusedAlgorithm, setFocusedAlgorithm] = useState<AlgorithmName>(
+    initialState.config.algorithm,
+  )
   const [deltaBaseline, setDeltaBaseline] = useState<AlgorithmName | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [showLoading, setShowLoading] = useState(false)
@@ -155,6 +167,30 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(timer)
     }
   }, [isRunning])
+
+  // The URL tracks the workspace continuously, so the address bar (and
+  // anything copied from it) always matches what is on screen. History
+  // is replaced rather than pushed: editing a field is not navigation.
+  useEffect(() => {
+    const search = buildShareSearch({ config, mode, comparisonAlgorithms, comparisonView })
+    if (search !== window.location.search) {
+      window.history.replaceState(null, '', `${window.location.pathname}${search}`)
+    }
+  }, [config, mode, comparisonAlgorithms, comparisonView])
+
+  // A shared link is an invitation to see the run, not to retype it, so
+  // a URL that carries state runs itself once on arrival. Whether the
+  // link carried state is captured during the first render, before the
+  // effect above writes the URL — otherwise every visit would look like
+  // a shared one and the first-run empty state (§11) would never show.
+  const autoRanRef = useRef(false)
+  useEffect(() => {
+    if (autoRanRef.current || !openedFromLink) {
+      return
+    }
+    autoRanRef.current = true
+    runSimulation()
+  }, [openedFromLink, runSimulation])
 
   const dismissFailure = useCallback(() => {
     setFailure(null)

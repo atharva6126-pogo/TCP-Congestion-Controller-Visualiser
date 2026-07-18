@@ -1,0 +1,25 @@
+# Local stack: the UI on :8080 proxies /api to the service on the
+# compose network, so the browser sees a single origin — the same shape
+# the production images run in.
+#
+#   docker compose up --build
+
+services:
+  backend:
+    build:
+      context: ./backend
+    # Not published: the UI reaches it over the compose network. Expose
+    # it with `docker compose run --publish` when probing the API alone.
+    expose:
+      - '8000'
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - '8080:80'
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

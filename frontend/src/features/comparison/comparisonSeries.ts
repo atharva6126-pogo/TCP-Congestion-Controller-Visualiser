@@ -11,7 +11,7 @@ import type { SimulationRun } from '../../lib/api/simulations'
 import { buildCwndSeries } from '../charts/cwndSeries'
 import type { CwndSeries } from '../charts/cwndSeries'
 import { ALGORITHM_ORDER } from '../simulation/algorithmColors'
-import type { AlgorithmName, SimulationTimeline } from '../simulation/timeline'
+import type { AlgorithmName } from '../simulation/timeline'
 
 export type RunMap = ReadonlyMap<AlgorithmName, SimulationRun>
 
@@ -297,8 +297,4 @@ export function deltaAgainst(
     value: difference,
     improvement: row.better === 'higher' ? difference > 0 : difference < 0,
   }
-}
-
-export function timelineOf(runs: RunMap, algorithm: AlgorithmName): SimulationTimeline | null {
-  return runs.get(algorithm)?.timeline ?? null
 }

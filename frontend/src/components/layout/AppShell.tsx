@@ -1,5 +1,7 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
+import { ExportDialog } from '../../features/export/ExportDialog'
+import { ReplayAnnouncer } from '../../features/replay/ReplayAnnouncer'
 import { useReplayControls } from '../../features/replay/useReplayControls'
 import { useSimulation } from '../../features/simulation/useSimulation'
 import { useGlobalShortcuts } from '../../lib/useGlobalShortcuts'
@@ -25,11 +27,29 @@ import { TransportBar } from './TransportBar'
  */
 export function AppShell() {
   const clock = useReplayControls()
-  const { mode, setMode } = useSimulation()
+  const { mode, setMode, runs, runSimulation } = useSimulation()
   const [configCollapsed, setConfigCollapsed] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false)
   const [statsDrawerOpen, setStatsDrawerOpen] = useState(false)
+
+  /**
+   * Loss instants across every loaded run, so Shift+←/→ jumps to the
+   * moments that explain the shape of the curve (§6). In comparison
+   * mode the runs share one clock, so their losses share one list.
+   */
+  const lossTimestamps = useMemo(() => {
+    const times = new Set<number>()
+    for (const run of runs.values()) {
+      for (const event of run.timeline.events) {
+        if (event.eventType === 'packet_lost') {
+          times.add(event.timestamp)
+        }
+      }
+    }
+    return [...times].sort((a, b) => a - b)
+  }, [runs])
 
   const toggleHelp = useCallback(() => {
     setHelpOpen((open) => !open)
@@ -56,13 +76,33 @@ export function AppShell() {
     setMode(mode === 'single' ? 'comparison' : 'single')
   }, [mode, setMode])
 
+  const jumpToNextLoss = useCallback(() => {
+    const now = clock.getCurrentTime()
+    const next = lossTimestamps.find((timestamp) => timestamp > now)
+    if (next !== undefined) {
+      clock.seek(next)
+    }
+  }, [clock, lossTimestamps])
+
+  const jumpToPreviousLoss = useCallback(() => {
+    const now = clock.getCurrentTime()
+    const previous = lossTimestamps.filter((timestamp) => timestamp < now).at(-1)
+    if (previous !== undefined) {
+      clock.seek(previous)
+    }
+  }, [clock, lossTimestamps])
+
   useGlobalShortcuts({
     toggleHelp,
     toggleConfigRail,
     toggleReplay,
     stepForward: clock.stepForward,
     stepBackward: clock.stepBackward,
+    jumpToNextLoss,
+    jumpToPreviousLoss,
     toggleComparison,
+    rerun: runSimulation,
+    setSpeed: clock.setSpeed,
   })
 
   const columns = configCollapsed
@@ -80,6 +120,7 @@ export function AppShell() {
         <Stage />
         <StatsRail />
       </div>
+      <ReplayAnnouncer />
       <FailureBanner />
       <TransportBar
         onOpenConfigDrawer={() => {
@@ -91,12 +132,21 @@ export function AppShell() {
         onOpenHelp={() => {
           setHelpOpen(true)
         }}
+        onOpenExport={() => {
+          setExportOpen(true)
+        }}
       />
 
       <HelpOverlay
         open={helpOpen}
         onClose={() => {
           setHelpOpen(false)
+        }}
+      />
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => {
+          setExportOpen(false)
         }}
       />
       <Dialog

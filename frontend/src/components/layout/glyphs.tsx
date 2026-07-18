@@ -64,6 +64,22 @@ export function ColumnsGlyph() {
   )
 }
 
+export function ShareGlyph() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <path d="M8 10.5V2.5M5 5.5 8 2.5l3 3" />
+      <path d="M3.5 9.5v3a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-3" />
+    </svg>
+  )
+}
+
 export function QuestionGlyph() {
   return (
     <svg

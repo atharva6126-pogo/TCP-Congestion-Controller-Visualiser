@@ -39,6 +39,8 @@ export class ReplayEngine implements ReplayControls {
 
   getSnapshot = (): ReplayClockState => this.snapshot
 
+  getCurrentTime = (): number => this.snapshot.currentTime
+
   play = (): void => {
     const { currentTime, duration, isPlaying } = this.snapshot
     if (isPlaying || duration === 0) {

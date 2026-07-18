@@ -26,6 +26,12 @@ export interface ReplayControls {
   pause: () => void
   /** Move the cursor; clamped to [0, duration]. Takes effect immediately. */
   seek: (timeSeconds: number) => void
+  /**
+   * The cursor, read imperatively. For callers that need "now" at the
+   * moment of an action (a keyboard jump) but must not re-render every
+   * frame — binding the reactive cursor would defeat §5's frame budget.
+   */
+  getCurrentTime: () => number
   setSpeed: (speed: ReplaySpeed) => void
   /**
    * Called when a run loads; resets the cursor to 0 and stops playback.
