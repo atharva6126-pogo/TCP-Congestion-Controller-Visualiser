@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
 
 import { useReplayControls } from '../../features/replay/useReplayControls'
-import { StatsPanel } from '../../features/stats/StatsPanel'
 import { useGlobalShortcuts } from '../../lib/useGlobalShortcuts'
 import { Dialog } from '../ui/Dialog'
 import { ConfigRail } from './ConfigRail'
@@ -10,6 +9,7 @@ import { FailureBanner } from './FailureBanner'
 import { HelpOverlay } from './HelpOverlay'
 import { Stage } from './Stage'
 import { StatsRail } from './StatsRail'
+import { StatsRailContent } from './StatsRailContent'
 import { TransportBar } from './TransportBar'
 
 /**
@@ -105,12 +105,10 @@ export function AppShell() {
         onClose={() => {
           setStatsDrawerOpen(false)
         }}
-        label="Run statistics"
+        label="Run statistics and inspectors"
         variant="drawer-right"
       >
-        <div className="p-4">
-          <StatsPanel />
-        </div>
+        <StatsRailContent />
       </Dialog>
     </div>
   )

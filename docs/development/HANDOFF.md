@@ -1,6 +1,6 @@
 # Development Handoff
 
-Last updated: after Task 14 (backend integration).
+Last updated: after Task 15 (timeline and packet inspectors).
 
 ## Current architecture
 
@@ -17,8 +17,9 @@ Two independently runnable halves, joined later by one HTTP contract:
   `useReplayControls`), `features/simulation` (timeline types, config +
   validation, run state), `features/packets` (SVG flight lane + pure
   derivations), `features/charts` (cwnd chart + pure derivations),
-  `features/stats` (run totals), `components/layout` (three-rail shell
-  + transport bar), `lib/api` (fetch wrapper, health, simulations).
+  `features/stats` (run totals), `features/inspector` (event log +
+  detail panel, pure lookups), `components/layout` (three-rail shell +
+  transport bar), `lib/api` (fetch wrapper, health, simulations).
 - **Contracts**: `docs/design/DESIGN_SPEC.md` (frontend, binding),
   ADRs 0001–0004 (backend architecture and the wire contract),
   `docs/planning/` (original scope).
@@ -48,6 +49,9 @@ Two independently runnable halves, joined later by one HTTP contract:
 14. Backend integration: `POST /simulations`, phase reporting (ADR
     0004), config panel with validation, loading/error states; the
     demo fixture is gone.
+15. Timeline and packet inspectors: replay log with the current event
+    marked, click/keyboard to seek, and full metadata for any event or
+    transmission attempt.
 
 ## Remaining tasks
 
@@ -55,7 +59,7 @@ Two independently runnable halves, joined later by one HTTP contract:
   the shared time axis, plus the synced crosshair and single combined
   tooltip across charts. (The cwnd chart itself is done.)
 - **Live statistics**: the rail shows whole-run totals; the
-  cursor-relative values of §2 step 4 and the event inspector remain.
+  cursor-relative values of §2 step 4 remain.
 - **Comparison mode** (§15): multi-algorithm runs, shared seed enforced,
   overlay + small-multiples, Δ table.
 - Config-in-URL sharing, export (PNG/CSV/JSON), remaining shortcuts
@@ -114,8 +118,9 @@ Two independently runnable halves, joined later by one HTTP contract:
   `backend/.venv/bin/uvicorn tcp_visualizer.main:app --port 8000`.
 - **Frontend**: builds clean (`npm run format|lint|build` in
   `frontend/`). Shell, theme, replay engine, transport, keyboard layer,
-  packet lane, congestion window chart, config panel, and run-total
-  statistics all functional against the live backend (`npm run dev`
+  packet lane, congestion window chart, config panel, run-total
+  statistics, and both inspectors all functional against the live
+  backend (`npm run dev`
   proxies `/api` to port 8000); small multiples and cursor-relative
   statistics are still to come. The
   bundle is ~576 kB (Recharts dominates); code-splitting is available
@@ -131,5 +136,7 @@ comparison table. Everything it needs already exists: the API is
 deterministic per configuration, and both visualizations already take a
 timeline as a prop.
 
-Alternatively, **cursor-relative statistics and the event inspector**
-is a smaller, self-contained piece of the same journey (§2 step 4).
+Alternatively, **cursor-relative statistics** is a smaller,
+self-contained piece of the same journey (§2 step 4): the inspectors
+already derive everything from (timeline, cursor), so the stat tiles
+can follow the same pattern.

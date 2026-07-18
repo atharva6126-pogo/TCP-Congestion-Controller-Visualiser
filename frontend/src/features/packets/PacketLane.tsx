@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 
+import { isSamePacket } from '../inspector/selection'
+import { useInspector } from '../inspector/useInspector'
 import { useReplayClock } from '../replay/useReplayClock'
 import { ALGORITHM_TEXT_CLASS } from '../simulation/algorithmColors'
 import { latestTimestampAtOrBefore, uniqueEventTimestamps } from '../simulation/timeline'
@@ -13,6 +15,11 @@ type VisibleVisual = Exclude<PacketVisual, { kind: 'hidden' }>
 interface VisiblePacket {
   transmission: Transmission
   visual: VisibleVisual
+}
+
+interface PacketGlyphProps extends VisiblePacket {
+  selected: boolean
+  onSelect: () => void
 }
 
 /*
@@ -65,6 +72,7 @@ interface PacketLaneProps {
 export function PacketLane({ timeline }: PacketLaneProps) {
   const { currentTime } = useReplayClock()
   const reducedMotion = useReducedMotion()
+  const { selection, select } = useInspector()
 
   const transmissions = useMemo(() => buildTransmissions(timeline.events), [timeline])
   const eventTimestamps = useMemo(() => uniqueEventTimestamps(timeline.events), [timeline])
@@ -156,6 +164,14 @@ export function PacketLane({ timeline }: PacketLaneProps) {
           key={`${transmission.sequenceNumber}:${transmission.attempt}`}
           transmission={transmission}
           visual={visual}
+          selected={isSamePacket(selection, transmission.sequenceNumber, transmission.attempt)}
+          onSelect={() => {
+            select({
+              kind: 'packet',
+              sequenceNumber: transmission.sequenceNumber,
+              attempt: transmission.attempt,
+            })
+          }}
         />
       ))}
 
@@ -208,20 +224,27 @@ export function PacketLane({ timeline }: PacketLaneProps) {
   )
 }
 
-function PacketGlyph({ transmission, visual }: VisiblePacket) {
+function PacketGlyph({ transmission, visual, selected, onSelect }: PacketGlyphProps) {
   const describe = `seq ${transmission.sequenceNumber} · ${transmission.sizeBytes} B · attempt ${
     transmission.attempt + 1
   } · ${transmission.fate}`
+  // Clicking any packet pins it in the inspector (§16). Keyboard users
+  // reach the same detail through the timeline event list, so the lane
+  // does not add a tab stop per packet.
+  const interactive = { onClick: onSelect, className: 'cursor-pointer' }
 
   if (visual.kind === 'data') {
     return (
       <circle
+        {...interactive}
         cx={SENDER_X + visual.progress * SPAN}
         cy={DATA_Y}
-        r={DATA_RADIUS}
+        r={selected ? DATA_RADIUS + 2 : DATA_RADIUS}
         fill="currentColor"
-        stroke={visual.retransmission ? 'var(--status-danger)' : 'none'}
-        strokeWidth={visual.retransmission ? 1.5 : 0}
+        stroke={
+          selected ? 'var(--fg-primary)' : visual.retransmission ? 'var(--status-danger)' : 'none'
+        }
+        strokeWidth={selected || visual.retransmission ? 1.5 : 0}
       >
         <title>{describe}</title>
       </circle>
@@ -230,11 +253,12 @@ function PacketGlyph({ transmission, visual }: VisiblePacket) {
   if (visual.kind === 'ack') {
     return (
       <circle
+        {...interactive}
         cx={RECEIVER_X - visual.progress * SPAN}
         cy={ACK_Y}
-        r={ACK_RADIUS}
+        r={selected ? ACK_RADIUS + 2 : ACK_RADIUS}
         fill="none"
-        stroke="currentColor"
+        stroke={selected ? 'var(--fg-primary)' : 'currentColor'}
         strokeWidth="1.5"
       >
         <title>{`ack for ${describe}`}</title>
@@ -248,7 +272,8 @@ function PacketGlyph({ transmission, visual }: VisiblePacket) {
     DATA_Y + ((Math.floor(transmission.sequenceNumber / transmission.sizeBytes) % 3) - 1) * 14
   return (
     <g
-      stroke="var(--status-danger)"
+      {...interactive}
+      stroke={selected ? 'var(--fg-primary)' : 'var(--status-danger)'}
       strokeWidth="1.5"
       opacity={visual.opacity}
       transform={`translate(${x} ${y})`}

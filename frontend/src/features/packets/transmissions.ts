@@ -7,7 +7,7 @@
  * pause, and completion.
  */
 
-import type { SimulationEvent } from '../simulation/timeline'
+import type { CongestionSignal, SimulationEvent } from '../simulation/timeline'
 
 /** One transmission attempt of one segment, paired send-to-completion. */
 export interface Transmission {
@@ -18,6 +18,8 @@ export interface Transmission {
   sendTime: number
   completionTime: number
   fate: 'delivered' | 'lost'
+  /** The signal that completed this attempt: the ACK, or the loss observation. */
+  signal: CongestionSignal | undefined
 }
 
 /**
@@ -54,6 +56,7 @@ export function buildTransmissions(events: readonly SimulationEvent[]): readonly
         sendTime: started.sendTime,
         completionTime: event.timestamp,
         fate: event.eventType === 'packet_acknowledged' ? 'delivered' : 'lost',
+        signal: event.signal,
       })
     }
   }

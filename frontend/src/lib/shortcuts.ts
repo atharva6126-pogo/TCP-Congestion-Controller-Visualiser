@@ -13,7 +13,9 @@ export interface ShortcutDefinition {
 export const SHORTCUTS: readonly ShortcutDefinition[] = [
   { keys: ['Space'], description: 'Play or pause the replay (once a run is loaded)' },
   { keys: ['←', '→'], description: 'Step to the previous or next event' },
+  { keys: ['↑', '↓'], description: 'Move between events in the timeline list' },
+  { keys: ['Enter'], description: 'Inspect the selected event’s packet' },
   { keys: ['⌘/Ctrl', '\\'], description: 'Collapse or expand the configuration rail' },
   { keys: ['?'], description: 'Show this shortcut reference' },
-  { keys: ['Esc'], description: 'Close dialogs' },
+  { keys: ['Esc'], description: 'Close dialogs, or clear the inspector selection' },
 ]

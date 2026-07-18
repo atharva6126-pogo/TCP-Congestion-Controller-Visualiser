@@ -1,17 +1,17 @@
-import { StatsPanel } from '../../features/stats/StatsPanel'
+import { StatsRailContent } from './StatsRailContent'
 
 /**
- * Right rail — live statistics and the event inspector (§4). Visible at
- * xl and up; smaller viewports reach the same content through the stats
+ * Right rail — statistics and the inspectors (§4). Visible at xl and
+ * up; smaller viewports reach the same content through the stats
  * drawer (§17).
  */
 export function StatsRail() {
   return (
     <aside
-      aria-label="Run statistics"
-      className="hidden h-full flex-col border-l border-edge bg-surface p-4 xl:flex"
+      aria-label="Run statistics and inspectors"
+      className="hidden h-full min-h-0 border-l border-edge bg-surface xl:block"
     >
-      <StatsPanel />
+      <StatsRailContent />
     </aside>
   )
 }
