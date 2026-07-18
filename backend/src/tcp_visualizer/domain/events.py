@@ -6,6 +6,7 @@ from enum import StrEnum
 from tcp_visualizer.domain.errors import DomainError
 from tcp_visualizer.domain.node import Node
 from tcp_visualizer.domain.packet import Packet
+from tcp_visualizer.domain.signals import CongestionSignal
 
 
 class SimulationEventType(StrEnum):
@@ -23,7 +24,10 @@ class SimulationEvent:
 
     ``node`` and ``packet`` apply to packet-level events (sent/acknowledged/
     lost); ``congestion_window_segments`` applies to congestion-window-change
-    events. Fields irrelevant to a given ``event_type`` are left as ``None``.
+    events; ``signal`` records which network observation an acknowledgement
+    or loss event corresponds to (the record of the observation, not the
+    observation itself — see ADR 0002). Fields irrelevant to a given
+    ``event_type`` are left as ``None``.
     """
 
     timestamp: float
@@ -31,6 +35,7 @@ class SimulationEvent:
     node: Node | None = None
     packet: Packet | None = None
     congestion_window_segments: float | None = None
+    signal: CongestionSignal | None = None
 
     def __post_init__(self) -> None:
         if self.timestamp < 0:

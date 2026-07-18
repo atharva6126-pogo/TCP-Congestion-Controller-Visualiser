@@ -6,27 +6,42 @@ through a SimPy-modeled network link to produce a complete, deterministic
 
 The engine owns network-level concerns that apply regardless of which
 algorithm is plugged in: chunking data into segments, simulating
-transmission/propagation delay, drawing seeded packet-loss outcomes, and
-retransmitting lost segments so the transfer always completes. It has no
-opinion on *how* the congestion window should grow or shrink — that is
-entirely delegated to the injected algorithm via ``on_ack``/``on_packet_loss``.
+transmission/propagation delay, drawing seeded packet-loss outcomes,
+classifying each observed loss as a congestion signal, and retransmitting
+lost segments so the transfer always completes. It has no opinion on *how*
+the congestion window should grow or shrink — every observation is
+delivered to the injected algorithm as a
+:class:`~tcp_visualizer.domain.signals.CongestionSignal` via ``on_signal``,
+and the algorithm alone decides the response.
+
+Loss classification (see ADR 0002): a loss detected while at least three
+*other* packets are in flight is reported as ``TripleDuplicateAck`` —
+those packets generate the duplicate acknowledgements fast retransmit
+needs — otherwise as ``Timeout``. Both are detected one round trip after
+the send; the simulator does not model a separate, longer RTO delay.
 """
 
 import math
 import random
 from collections import deque
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from typing import Protocol
 
 import simpy
 
 from tcp_visualizer.domain import (
+    AckReceived,
+    CongestionSignal,
     Packet,
     SimulationConfig,
     SimulationEvent,
     SimulationEventType,
     SimulationResult,
+    Timeout,
+    TripleDuplicateAck,
 )
+
+_FAST_RETRANSMIT_MINIMUM_OTHER_PACKETS_IN_FLIGHT = 3
 
 
 class _OnPacketComplete(Protocol):
@@ -59,6 +74,9 @@ def _sender(
     completed = 0
     slot_freed = env.event()
 
+    def packets_in_flight() -> int:
+        return in_flight
+
     def on_packet_complete(sequence_index: int, *, delivered: bool) -> None:
         nonlocal in_flight, completed
         in_flight -= 1
@@ -77,7 +95,16 @@ def _sender(
             sequence_index = pending.popleft()
             in_flight += 1
             env.process(
-                _transmit_packet(env, config, rng, events, sequence_index, mss, on_packet_complete)
+                _transmit_packet(
+                    env,
+                    config,
+                    rng,
+                    events,
+                    sequence_index,
+                    mss,
+                    packets_in_flight,
+                    on_packet_complete,
+                )
             )
 
         slot_freed = env.event()
@@ -91,6 +118,7 @@ def _transmit_packet(
     events: list[SimulationEvent],
     sequence_index: int,
     mss: int,
+    packets_in_flight: Callable[[], int],
     on_complete: _OnPacketComplete,
 ) -> Generator[simpy.Event, None, None]:
     bytes_before = sequence_index * mss
@@ -114,15 +142,23 @@ def _transmit_packet(
 
     algorithm = config.algorithm
     if rng.random() < config.link.loss_probability:
+        # This packet still counts itself in the in-flight total here.
+        other_packets_in_flight = packets_in_flight() - 1
+        signal: CongestionSignal
+        if other_packets_in_flight >= _FAST_RETRANSMIT_MINIMUM_OTHER_PACKETS_IN_FLIGHT:
+            signal = TripleDuplicateAck(current_time=env.now)
+        else:
+            signal = Timeout(current_time=env.now)
         events.append(
             SimulationEvent(
                 timestamp=env.now,
                 event_type=SimulationEventType.PACKET_LOST,
                 node=config.receiver,
                 packet=packet,
+                signal=signal,
             )
         )
-        algorithm.on_packet_loss(current_time=env.now)
+        algorithm.on_signal(signal)
         events.append(
             SimulationEvent(
                 timestamp=env.now,
@@ -133,15 +169,17 @@ def _transmit_packet(
         )
         on_complete(sequence_index, delivered=False)
     else:
+        ack = AckReceived(acknowledged_segments=size_bytes / mss, current_time=env.now)
         events.append(
             SimulationEvent(
                 timestamp=env.now,
                 event_type=SimulationEventType.PACKET_ACKNOWLEDGED,
                 node=config.receiver,
                 packet=packet,
+                signal=ack,
             )
         )
-        algorithm.on_ack(acknowledged_segments=size_bytes / mss, current_time=env.now)
+        algorithm.on_signal(ack)
         events.append(
             SimulationEvent(
                 timestamp=env.now,

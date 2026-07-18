@@ -2,16 +2,24 @@
 
 from abc import ABC, abstractmethod
 
+from tcp_visualizer.domain.signals import CongestionSignal
+
 
 class CongestionControlAlgorithm(ABC):
     """A pluggable congestion control strategy (Tahoe, Reno, Cubic, ...).
 
-    Implementations own their internal congestion window state and update it
-    in response to acknowledgements and detected packet loss. ``current_time``
-    is passed to both hooks so that time-based algorithms (e.g. Cubic, whose
-    growth depends on elapsed time since the last congestion event rather than
-    on ACK count) can be implemented against this same contract as round- or
-    ACK-based algorithms like Reno and Tahoe.
+    Implementations own their internal congestion window state and update
+    it in response to :class:`~tcp_visualizer.domain.signals.CongestionSignal`
+    messages delivered by the simulation engine — acknowledgements
+    (``AckReceived``) and loss observations (``TripleDuplicateAck``,
+    ``Timeout``). Signals carry network observations only; how to interpret
+    and respond to them is entirely the algorithm's concern.
+
+    Implementations should ignore signal kinds they do not recognize
+    (a wildcard ``case _: pass`` arm), so new signals can be introduced for
+    future algorithms without touching existing ones. Signal timestamps let
+    time-based algorithms (e.g. Cubic) share this contract with round- and
+    ACK-based ones (Reno, Tahoe).
     """
 
     @property
@@ -25,9 +33,5 @@ class CongestionControlAlgorithm(ABC):
         """The current congestion window, in units of maximum segment size."""
 
     @abstractmethod
-    def on_ack(self, *, acknowledged_segments: float, current_time: float) -> None:
-        """Update state in response to newly acknowledged data."""
-
-    @abstractmethod
-    def on_packet_loss(self, *, current_time: float) -> None:
-        """Update state in response to detected packet loss."""
+    def on_signal(self, signal: CongestionSignal) -> None:
+        """Update state in response to an observed network signal."""

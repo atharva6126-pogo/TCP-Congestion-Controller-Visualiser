@@ -1,4 +1,4 @@
-"""TCP Tahoe congestion control (RFC 5681 semantics, without fast recovery)."""
+"""TCP Reno congestion control (RFC 5681, sections 3.1 and 3.2)."""
 
 from tcp_visualizer.algorithms.phase import CongestionPhase
 from tcp_visualizer.domain import (
@@ -10,28 +10,29 @@ from tcp_visualizer.domain import (
     TripleDuplicateAck,
 )
 
-# Backward-compatible alias: Tahoe predates the shared phase enum.
-TahoePhase = CongestionPhase
 
+class TcpReno(CongestionControlAlgorithm):
+    """TCP Reno: Tahoe's growth rules plus fast recovery on duplicate ACKs.
 
-class TcpTahoe(CongestionControlAlgorithm):
-    """TCP Tahoe: slow start, congestion avoidance, and full window collapse on loss.
+    Slow start and congestion avoidance are identical to Tahoe (RFC 5681
+    section 3.1, in segment units). What distinguishes Reno is that its
+    response depends on *which* loss signal arrives (section 3.2):
 
-    Follows RFC 5681 with congestion window and ssthresh expressed in
-    segments rather than bytes:
+    - ``TripleDuplicateAck`` (fast retransmit): ``ssthresh = max(cwnd/2, 2)``
+      and ``cwnd = ssthresh`` — the window halves and transmission continues
+      in congestion avoidance rather than collapsing.
+    - ``Timeout``: identical to Tahoe — ``ssthresh = max(cwnd/2, 2)``,
+      ``cwnd = 1``, and slow start restarts.
 
-    - Slow start (cwnd < ssthresh): cwnd grows by the amount acknowledged,
-      doubling roughly once per round-trip time.
-    - Congestion avoidance (cwnd >= ssthresh): cwnd grows by
-      ``acknowledged / cwnd`` per ACK — RFC 5681's ``SMSS*SMSS / cwnd`` in
-      segment units — roughly one segment per round-trip time.
-    - On loss: ``ssthresh = max(cwnd / 2, 2)`` and ``cwnd = 1``, returning to
-      slow start.
-
-    Tahoe reacts identically to both loss signals — ``TripleDuplicateAck``
-    (fast retransmit) and ``Timeout`` — because it has no fast recovery;
-    that is Reno's addition. Tahoe's window updates depend only on ACK and
-    loss signals, never on elapsed time, so signal timestamps are ignored.
+    Modeling simplifications (see ADR 0002): fast recovery's transient
+    window inflation (``cwnd = ssthresh + 3``, +1 per further duplicate
+    ACK, deflation on the recovery ACK) is not modeled — the engine emits
+    no per-duplicate-ACK signals and delivery continues during recovery, so
+    inflation would be unobservable; the modeled outcome (halve, continue)
+    is the behavior the visualizer teaches. Each loss signal triggers its
+    own response, so several losses within one window compound — which
+    qualitatively mirrors real Reno's well-known multi-loss weakness that
+    New Reno was designed to fix.
     """
 
     def __init__(self, *, initial_ssthresh_segments: float = 64.0) -> None:
@@ -42,7 +43,7 @@ class TcpTahoe(CongestionControlAlgorithm):
 
     @property
     def name(self) -> str:
-        return "tahoe"
+        return "reno"
 
     @property
     def congestion_window_segments(self) -> float:
@@ -69,7 +70,10 @@ class TcpTahoe(CongestionControlAlgorithm):
                     self._congestion_window_segments += (
                         acknowledged / self._congestion_window_segments
                     )
-            case TripleDuplicateAck() | Timeout():
+            case TripleDuplicateAck():
+                self._ssthresh_segments = max(self._congestion_window_segments / 2, 2.0)
+                self._congestion_window_segments = self._ssthresh_segments
+            case Timeout():
                 self._ssthresh_segments = max(self._congestion_window_segments / 2, 2.0)
                 self._congestion_window_segments = 1.0
             case _:
