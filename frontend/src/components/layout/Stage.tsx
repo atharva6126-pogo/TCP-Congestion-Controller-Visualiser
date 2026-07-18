@@ -1,11 +1,49 @@
+import { useEffect } from 'react'
+
+import { PacketLane } from '../../features/packets/PacketLane'
+import { useReplayControls } from '../../features/replay/useReplayControls'
+// TEMPORARY: demo fixture until backend integration; see fixtures/demoTimeline.ts.
+import { DEMO_TIMELINE } from '../../features/simulation/fixtures/demoTimeline'
+import { uniqueEventTimestamps } from '../../features/simulation/timeline'
+import type { SimulationTimeline } from '../../features/simulation/timeline'
 import { Kbd } from '../ui/Kbd'
 
 /**
- * Center stage — the visualization surface (§4). Foundation scope:
- * renders the designed first-run empty state (§11). The packet lane,
- * cwnd chart, and small multiples mount here in later tasks.
+ * Center stage — the visualization surface (§4): the packet lane on
+ * top; the cwnd chart and small multiples mount below in later tasks.
+ * With no timeline, renders the designed first-run empty state (§11).
  */
 export function Stage() {
+  const { loadTimeline, play } = useReplayControls()
+  const timeline: SimulationTimeline | null = DEMO_TIMELINE
+
+  useEffect(() => {
+    if (timeline === null) {
+      return
+    }
+    // Replay begins automatically once a run is available (§2).
+    loadTimeline(timeline.durationSeconds, uniqueEventTimestamps(timeline.events))
+    play()
+  }, [timeline, loadTimeline, play])
+
+  if (timeline === null) {
+    return <EmptyStage />
+  }
+
+  return (
+    <main aria-label="Visualization stage" className="flex h-full min-h-0 flex-col">
+      <section aria-label="Packet flight lane" className="border-b border-edge px-6 pt-4 pb-2">
+        <div className="mx-auto max-w-4xl">
+          <PacketLane timeline={timeline} />
+        </div>
+      </section>
+      {/* The cwnd chart and small multiples (§14) mount here. */}
+      <div className="min-h-0 flex-1" />
+    </main>
+  )
+}
+
+function EmptyStage() {
   return (
     <main aria-label="Visualization stage" className="flex h-full items-center justify-center p-6">
       <div className="flex max-w-md flex-col items-center gap-6 text-center">

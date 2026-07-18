@@ -24,7 +24,10 @@ src/
 │   ├── layout/     App shell: ConfigRail, Stage, StatsRail, TransportBar
 │   └── ui/         Small reusable primitives (SectionLabel, …)
 ├── features/       One folder per capability; components + state + logic
-│   ├── replay/     ReplayClock contract and provider (the shared cursor)
+│   ├── packets/    SVG packet flight lane + pure timeline derivations
+│   ├── replay/     ReplayClock contract, engine, and provider (the shared cursor)
+│   ├── simulation/ Timeline types mirroring the backend domain (+ temporary demo fixture)
+│   ├── stats/      Stat tiles (em-dash empty state until live data)
 │   └── theme/      Dark/light theme state (dark-first)
 ├── lib/
 │   └── api/        HTTP client (client.ts) and endpoint modules (health.ts)
@@ -32,9 +35,7 @@ src/
 ```
 
 Planned feature folders (added with their tasks, never speculatively):
-`features/simulation` (run state + API), `features/charts`,
-`features/packets` (SVG flight lane), `features/stats`,
-`features/comparison`.
+`features/charts`, `features/comparison`.
 
 ## Conventions
 
