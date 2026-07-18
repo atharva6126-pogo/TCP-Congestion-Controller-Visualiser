@@ -4,7 +4,7 @@ from typing import Protocol
 
 import pytest
 
-from tcp_visualizer.domain import Link, Node, NodeRole, SimulationConfig
+from tcp_visualizer.domain import CongestionControlAlgorithm, Link, Node, NodeRole, SimulationConfig
 
 from .support import StubCongestionControlAlgorithm
 
@@ -19,6 +19,7 @@ class MakeConfig(Protocol):
         bandwidth_bytes_per_second: float = ...,
         latency_ms: float = ...,
         loss_probability: float = ...,
+        algorithm: CongestionControlAlgorithm | None = ...,
     ) -> SimulationConfig: ...
 
 
@@ -32,6 +33,7 @@ def make_config() -> MakeConfig:
         bandwidth_bytes_per_second: float = 1_000_000.0,
         latency_ms: float = 10.0,
         loss_probability: float = 0.0,
+        algorithm: CongestionControlAlgorithm | None = None,
     ) -> SimulationConfig:
         return SimulationConfig(
             seed=seed,
@@ -42,7 +44,7 @@ def make_config() -> MakeConfig:
                 latency_ms=latency_ms,
                 loss_probability=loss_probability,
             ),
-            algorithm=StubCongestionControlAlgorithm(),
+            algorithm=algorithm if algorithm is not None else StubCongestionControlAlgorithm(),
             total_bytes_to_transfer=total_bytes_to_transfer,
             maximum_segment_size_bytes=maximum_segment_size_bytes,
         )
