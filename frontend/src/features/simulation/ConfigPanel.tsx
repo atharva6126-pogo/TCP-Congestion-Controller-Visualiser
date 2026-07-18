@@ -1,20 +1,30 @@
 import { useId } from 'react'
 
 import { SectionLabel } from '../../components/ui/SectionLabel'
-import { ALGORITHM_LABEL } from './algorithmColors'
+import { ALGORITHM_LABEL, ALGORITHM_ORDER } from './algorithmColors'
 import { BOUNDS } from './config'
 import { NumberField } from './NumberField'
 import type { AlgorithmName } from './timeline'
 import { useSimulation } from './useSimulation'
 
-const ALGORITHMS: readonly AlgorithmName[] = ['tahoe', 'reno', 'new_reno', 'cubic']
-
 /** The simulation configuration form (DESIGN_SPEC §4 config rail). */
 export function ConfigPanel() {
-  const { config, setConfigValue, errors, isRunning, showLoading, runSimulation, firstErrorField } =
-    useSimulation()
+  const {
+    config,
+    setConfigValue,
+    errors,
+    isRunning,
+    showLoading,
+    runSimulation,
+    firstErrorField,
+    mode,
+    setMode,
+    comparisonAlgorithms,
+    toggleComparisonAlgorithm,
+  } = useSimulation()
   const algorithmId = useId()
   const hasErrors = firstErrorField !== null
+  const nothingSelected = mode === 'comparison' && comparisonAlgorithms.length === 0
 
   return (
     <form
@@ -26,25 +36,68 @@ export function ConfigPanel() {
     >
       <SectionLabel>Simulation</SectionLabel>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor={algorithmId} className="text-label text-fg-muted">
-          Algorithm
-        </label>
-        <select
-          id={algorithmId}
-          value={config.algorithm}
-          onChange={(event) => {
-            setConfigValue('algorithm', event.target.value as AlgorithmName)
-          }}
-          className="rounded border border-edge bg-raised px-2 py-1.5 text-ui text-fg"
-        >
-          {ALGORITHMS.map((algorithm) => (
-            <option key={algorithm} value={algorithm}>
-              {ALGORITHM_LABEL[algorithm]}
-            </option>
-          ))}
-        </select>
+      <div
+        role="group"
+        aria-label="View mode"
+        className="flex overflow-hidden rounded border border-edge"
+      >
+        {(['single', 'comparison'] as const).map((candidate) => (
+          <button
+            key={candidate}
+            type="button"
+            aria-pressed={mode === candidate}
+            onClick={() => {
+              setMode(candidate)
+            }}
+            className={`flex-1 px-2 py-1 text-label transition-colors duration-150 ${
+              mode === candidate ? 'bg-raised text-fg' : 'text-fg-muted hover:text-fg'
+            }`}
+          >
+            {candidate === 'single' ? 'Single' : 'Compare'}
+          </button>
+        ))}
       </div>
+
+      {mode === 'single' ? (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={algorithmId} className="text-label text-fg-muted">
+            Algorithm
+          </label>
+          <select
+            id={algorithmId}
+            value={config.algorithm}
+            onChange={(event) => {
+              setConfigValue('algorithm', event.target.value as AlgorithmName)
+            }}
+            className="rounded border border-edge bg-raised px-2 py-1.5 text-ui text-fg"
+          >
+            {ALGORITHM_ORDER.map((algorithm) => (
+              <option key={algorithm} value={algorithm}>
+                {ALGORITHM_LABEL[algorithm]}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <fieldset className="flex flex-col gap-1">
+          <legend className="text-label text-fg-muted">Algorithms to compare</legend>
+          {ALGORITHM_ORDER.map((algorithm) => (
+            <label key={algorithm} className="flex items-center gap-2 text-ui text-fg">
+              <input
+                type="checkbox"
+                checked={comparisonAlgorithms.includes(algorithm)}
+                onChange={() => {
+                  toggleComparisonAlgorithm(algorithm)
+                }}
+              />
+              {ALGORITHM_LABEL[algorithm]}
+            </label>
+          ))}
+          {nothingSelected && (
+            <p className="text-label text-danger">Select at least one algorithm to compare.</p>
+          )}
+        </fieldset>
+      )}
 
       <NumberField
         label={BOUNDS.roundTripTimeMs.label}
@@ -102,7 +155,7 @@ export function ConfigPanel() {
 
       <button
         type="submit"
-        disabled={hasErrors || isRunning}
+        disabled={hasErrors || isRunning || nothingSelected}
         title={hasErrors ? errors[firstErrorField] : undefined}
         className="rounded bg-raised px-3 py-2 text-ui font-medium text-fg transition-colors duration-150 hover:bg-edge disabled:text-fg-faint disabled:hover:bg-raised"
       >

@@ -11,8 +11,8 @@ import { StatTile } from './StatTile'
  * §2 arrive with the statistics task.
  */
 export function StatsPanel() {
-  const { run } = useSimulation()
-  const statistics = run?.statistics ?? null
+  const { activeRun } = useSimulation()
+  const statistics = activeRun?.statistics ?? null
 
   return (
     <section aria-label="Run statistics" className="flex flex-col gap-3">

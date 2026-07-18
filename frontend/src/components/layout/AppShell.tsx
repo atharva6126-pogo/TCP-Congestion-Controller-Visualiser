@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 
 import { useReplayControls } from '../../features/replay/useReplayControls'
+import { useSimulation } from '../../features/simulation/useSimulation'
 import { useGlobalShortcuts } from '../../lib/useGlobalShortcuts'
 import { Dialog } from '../ui/Dialog'
 import { ConfigRail } from './ConfigRail'
@@ -24,6 +25,7 @@ import { TransportBar } from './TransportBar'
  */
 export function AppShell() {
   const clock = useReplayControls()
+  const { mode, setMode } = useSimulation()
   const [configCollapsed, setConfigCollapsed] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false)
@@ -48,12 +50,19 @@ export function AppShell() {
     }
   }, [clock])
 
+  // Switching mode re-dresses the config rail; the new set of runs
+  // arrives when the user runs the simulation again (§15).
+  const toggleComparison = useCallback(() => {
+    setMode(mode === 'single' ? 'comparison' : 'single')
+  }, [mode, setMode])
+
   useGlobalShortcuts({
     toggleHelp,
     toggleConfigRail,
     toggleReplay,
     stepForward: clock.stepForward,
     stepBackward: clock.stepBackward,
+    toggleComparison,
   })
 
   const columns = configCollapsed

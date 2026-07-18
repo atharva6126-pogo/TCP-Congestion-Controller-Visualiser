@@ -1,5 +1,8 @@
 import type { AlgorithmName } from './timeline'
 
+/** Canonical order, oldest algorithm first — used by every selector and legend. */
+export const ALGORITHM_ORDER: readonly AlgorithmName[] = ['tahoe', 'reno', 'new_reno', 'cubic']
+
 /**
  * Algorithm identity colors (DESIGN_SPEC §7) — fixed forever and
  * colorblind-safe. Defined once here so every visualization draws the

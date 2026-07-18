@@ -1,20 +1,34 @@
 import { CwndChart } from '../../features/charts/CwndChart'
+import { ComparisonChart } from '../../features/comparison/ComparisonChart'
+import { ComparisonLegend } from '../../features/comparison/ComparisonLegend'
 import { PacketLane } from '../../features/packets/PacketLane'
 import { useSimulation } from '../../features/simulation/useSimulation'
 import { Kbd } from '../ui/Kbd'
 
 /**
  * Center stage — the visualization surface (§4): the packet lane above
- * the congestion window chart. With no run yet, the designed first-run
- * empty state (§11). While a run is in flight the previous one stays
- * visible, dimmed (§12).
+ * the window chart. In comparison mode the chart carries every
+ * algorithm and the lane follows the focused one (§15). With no run
+ * yet, the designed first-run empty state (§11); while a run is in
+ * flight the previous one stays visible, dimmed (§12).
  */
 export function Stage() {
-  const { run, showLoading } = useSimulation()
+  const {
+    activeRun,
+    runs,
+    mode,
+    comparisonView,
+    setComparisonView,
+    focusedAlgorithm,
+    setFocusedAlgorithm,
+    showLoading,
+  } = useSimulation()
 
-  if (run === null) {
+  if (activeRun === null) {
     return <EmptyStage />
   }
+
+  const comparing = mode === 'comparison' && runs.size > 1
 
   return (
     <main
@@ -26,13 +40,52 @@ export function Stage() {
     >
       <section aria-label="Packet flight lane" className="border-b border-edge px-6 pt-4 pb-2">
         <div className="mx-auto max-w-4xl">
-          <PacketLane timeline={run.timeline} />
+          <PacketLane timeline={activeRun.timeline} />
         </div>
       </section>
-      <section aria-label="Congestion window" className="min-h-[240px] flex-1 px-6 pt-3 pb-4">
-        <CwndChart timeline={run.timeline} />
+
+      <section
+        aria-label={comparing ? 'Congestion window comparison' : 'Congestion window'}
+        className="flex min-h-[260px] flex-1 flex-col gap-2 px-6 pt-3 pb-4"
+      >
+        {comparing ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <ComparisonLegend
+                algorithms={[...runs.keys()]}
+                focused={focusedAlgorithm}
+                onFocus={setFocusedAlgorithm}
+              />
+              <div
+                role="group"
+                aria-label="Comparison layout"
+                className="flex overflow-hidden rounded border border-edge"
+              >
+                {(['overlay', 'small_multiples'] as const).map((candidate) => (
+                  <button
+                    key={candidate}
+                    type="button"
+                    aria-pressed={comparisonView === candidate}
+                    onClick={() => {
+                      setComparisonView(candidate)
+                    }}
+                    className={`px-2 py-1 text-label transition-colors duration-150 ${
+                      comparisonView === candidate
+                        ? 'bg-raised text-fg'
+                        : 'text-fg-muted hover:text-fg'
+                    }`}
+                  >
+                    {candidate === 'overlay' ? 'Overlay' : 'Small multiples'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <ComparisonChart runs={runs} view={comparisonView} focused={focusedAlgorithm} />
+          </>
+        ) : (
+          <CwndChart timeline={activeRun.timeline} />
+        )}
       </section>
-      {/* Small multiples (throughput, RTT, ack progress) mount below (§14). */}
     </main>
   )
 }

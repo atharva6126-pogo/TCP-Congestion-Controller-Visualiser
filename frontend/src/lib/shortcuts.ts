@@ -15,6 +15,7 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
   { keys: ['←', '→'], description: 'Step to the previous or next event' },
   { keys: ['↑', '↓'], description: 'Move between events in the timeline list' },
   { keys: ['Enter'], description: 'Inspect the selected event’s packet' },
+  { keys: ['C'], description: 'Switch between single and comparison mode' },
   { keys: ['⌘/Ctrl', '\\'], description: 'Collapse or expand the configuration rail' },
   { keys: ['?'], description: 'Show this shortcut reference' },
   { keys: ['Esc'], description: 'Close dialogs, or clear the inspector selection' },

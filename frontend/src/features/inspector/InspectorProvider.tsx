@@ -15,7 +15,7 @@ import type { Selection } from './selection'
  * and must agree on one selection.
  */
 export function InspectorProvider({ children }: { children: ReactNode }) {
-  const { run } = useSimulation()
+  const { activeRun } = useSimulation()
   const [selection, setSelection] = useState<Selection>(null)
 
   const select = useCallback((next: Selection) => {
@@ -29,7 +29,7 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
   // A selection refers to one run's timeline; a new run invalidates it.
   useEffect(() => {
     setSelection(null)
-  }, [run])
+  }, [activeRun])
 
   const value = useMemo(() => ({ selection, select, clear }), [selection, select, clear])
 

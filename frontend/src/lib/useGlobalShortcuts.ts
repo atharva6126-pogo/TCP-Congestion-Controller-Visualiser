@@ -6,6 +6,7 @@ interface GlobalShortcutHandlers {
   toggleReplay: () => void
   stepForward: () => void
   stepBackward: () => void
+  toggleComparison: () => void
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -22,7 +23,14 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * where it is activation.
  */
 export function useGlobalShortcuts(handlers: GlobalShortcutHandlers): void {
-  const { toggleHelp, toggleConfigRail, toggleReplay, stepForward, stepBackward } = handlers
+  const {
+    toggleHelp,
+    toggleConfigRail,
+    toggleReplay,
+    stepForward,
+    stepBackward,
+    toggleComparison,
+  } = handlers
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -44,6 +52,9 @@ export function useGlobalShortcuts(handlers: GlobalShortcutHandlers): void {
       } else if (event.key === 'ArrowLeft' && !event.shiftKey) {
         event.preventDefault()
         stepBackward()
+      } else if (event.key === 'c' || event.key === 'C') {
+        event.preventDefault()
+        toggleComparison()
       }
     }
 
@@ -51,5 +62,5 @@ export function useGlobalShortcuts(handlers: GlobalShortcutHandlers): void {
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [toggleHelp, toggleConfigRail, toggleReplay, stepForward, stepBackward])
+  }, [toggleHelp, toggleConfigRail, toggleReplay, stepForward, stepBackward, toggleComparison])
 }

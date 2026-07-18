@@ -3,33 +3,52 @@ import type { ReactNode } from 'react'
 
 import { ApiError } from '../../lib/api/client'
 import { postSimulation } from '../../lib/api/simulations'
-import type { SimulationRun } from '../../lib/api/simulations'
+import type { SimulationRequest, SimulationRun } from '../../lib/api/simulations'
+import { mergeTimelines } from '../comparison/comparisonSeries'
 import { useReplayControls } from '../replay/useReplayControls'
+import { ALGORITHM_ORDER } from './algorithmColors'
 import { DEFAULT_CONFIG, toSimulationRequest, validateConfig } from './config'
 import type { ConfigField, SimulationFormConfig } from './config'
 import { SimulationContext } from './SimulationContext'
-import type { SimulationFailure } from './SimulationContext'
-import { uniqueEventTimestamps } from './timeline'
+import type { ComparisonView, SimulationFailure, ViewMode } from './SimulationContext'
+import type { AlgorithmName } from './timeline'
 
 /** Runs faster than this show no indicator at all (DESIGN_SPEC §12). */
 const LOADING_INDICATOR_DELAY_MS = 300
 
+function conditionsKey(request: SimulationRequest): string {
+  const { algorithm: _algorithm, ...conditions } = request
+  return JSON.stringify(conditions)
+}
+
 /**
  * Owns the configuration draft and the simulation request lifecycle,
- * and hands each successful timeline to the replay clock.
+ * and hands the resulting timelines to the replay clock.
  *
- * Configuration lives here rather than in the rail because the rail is
- * rendered twice (desktop aside and small-viewport drawer) and both
- * must edit the same draft.
+ * Comparison runs one request per algorithm built from the *same*
+ * configuration object, so identical conditions and a shared seed hold
+ * by construction and no simulation logic is duplicated — it is the
+ * same endpoint as a single run. Completed runs are cached by request,
+ * so switching focus, changing view, or leaving and re-entering
+ * comparison never re-runs work already done.
  */
 export function SimulationProvider({ children }: { children: ReactNode }) {
   const { loadTimeline, play } = useReplayControls()
   const [config, setConfig] = useState<SimulationFormConfig>(DEFAULT_CONFIG)
+  const [mode, setMode] = useState<ViewMode>('single')
+  const [comparisonAlgorithms, setComparisonAlgorithms] =
+    useState<readonly AlgorithmName[]>(ALGORITHM_ORDER)
+  const [comparisonView, setComparisonView] = useState<ComparisonView>('overlay')
+  const [focusedAlgorithm, setFocusedAlgorithm] = useState<AlgorithmName>(DEFAULT_CONFIG.algorithm)
+  const [deltaBaseline, setDeltaBaseline] = useState<AlgorithmName | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [showLoading, setShowLoading] = useState(false)
-  const [run, setRun] = useState<SimulationRun | null>(null)
+  const [runs, setRuns] = useState<ReadonlyMap<AlgorithmName, SimulationRun>>(new Map())
   const [failure, setFailure] = useState<SimulationFailure | null>(null)
+
   const requestIdRef = useRef(0)
+  const cacheRef = useRef(new Map<string, SimulationRun>())
+  const conditionsKeyRef = useRef<string | null>(null)
 
   const errors = useMemo(() => validateConfig(config), [config])
   const firstErrorField = (Object.keys(errors)[0] ?? null) as ConfigField | null
@@ -44,33 +63,69 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const toggleComparisonAlgorithm = useCallback((algorithm: AlgorithmName) => {
+    setComparisonAlgorithms((current) =>
+      current.includes(algorithm)
+        ? current.filter((entry) => entry !== algorithm)
+        : ALGORITHM_ORDER.filter((entry) => entry === algorithm || current.includes(entry)),
+    )
+  }, [])
+
   const runSimulation = useCallback(() => {
     if (Object.keys(validateConfig(config)).length > 0) {
       return
     }
+    const targets = mode === 'single' ? [config.algorithm] : comparisonAlgorithms
+    if (targets.length === 0) {
+      return
+    }
+
     const requestId = requestIdRef.current + 1
     requestIdRef.current = requestId
     const seed = config.seed
+    const baseRequest = toSimulationRequest(config)
+
+    // Cached runs are only valid for the conditions that produced them.
+    const key = conditionsKey(baseRequest)
+    if (conditionsKeyRef.current !== key) {
+      cacheRef.current.clear()
+      conditionsKeyRef.current = key
+    }
 
     setIsRunning(true)
     setFailure(null)
 
-    void postSimulation(toSimulationRequest(config))
-      .then((result) => {
+    const fetchOne = async (algorithm: AlgorithmName): Promise<[AlgorithmName, SimulationRun]> => {
+      const cached = cacheRef.current.get(algorithm)
+      if (cached !== undefined) {
+        return [algorithm, cached]
+      }
+      const result = await postSimulation({ ...baseRequest, algorithm })
+      cacheRef.current.set(algorithm, result)
+      return [algorithm, result]
+    }
+
+    void Promise.all(targets.map(fetchOne))
+      .then((entries) => {
         // A superseded request must not overwrite a newer one.
         if (requestIdRef.current !== requestId) {
           return
         }
-        setRun(result)
-        // Replay starts as soon as a run is available (§2).
-        loadTimeline(result.timeline.durationSeconds, uniqueEventTimestamps(result.timeline.events))
+        const nextRuns = new Map(entries)
+        setRuns(nextRuns)
+        setFocusedAlgorithm((current) =>
+          nextRuns.has(current) ? current : (targets[0] ?? current),
+        )
+        // The clock spans every run so the scrubber covers them all.
+        const merged = mergeTimelines(nextRuns)
+        loadTimeline(merged.durationSeconds, merged.eventTimestamps)
         play()
       })
       .catch((error: unknown) => {
         if (requestIdRef.current !== requestId) {
           return
         }
-        // The previous run stays on screen; only the banner changes (§13).
+        // The previous runs stay on screen; only the banner changes (§13).
         setFailure({
           message:
             error instanceof ApiError
@@ -84,7 +139,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
           setIsRunning(false)
         }
       })
-  }, [config, loadTimeline, play])
+  }, [config, mode, comparisonAlgorithms, loadTimeline, play])
 
   useEffect(() => {
     if (!isRunning) {
@@ -105,15 +160,29 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     setFailure(null)
   }, [])
 
+  const activeRun =
+    (mode === 'single' ? runs.get(config.algorithm) : runs.get(focusedAlgorithm)) ?? null
+
   const value = useMemo(
     () => ({
       config,
       setConfigValue,
       errors,
       firstErrorField,
+      mode,
+      setMode,
+      comparisonAlgorithms,
+      toggleComparisonAlgorithm,
+      comparisonView,
+      setComparisonView,
+      focusedAlgorithm,
+      setFocusedAlgorithm,
+      deltaBaseline,
+      setDeltaBaseline,
+      runs,
+      activeRun,
       isRunning,
       showLoading,
-      run,
       failure,
       runSimulation,
       dismissFailure,
@@ -123,9 +192,16 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       setConfigValue,
       errors,
       firstErrorField,
+      mode,
+      comparisonAlgorithms,
+      toggleComparisonAlgorithm,
+      comparisonView,
+      focusedAlgorithm,
+      deltaBaseline,
+      runs,
+      activeRun,
       isRunning,
       showLoading,
-      run,
       failure,
       runSimulation,
       dismissFailure,
