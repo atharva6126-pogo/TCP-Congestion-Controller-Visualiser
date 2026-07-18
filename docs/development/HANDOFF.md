@@ -1,6 +1,6 @@
 # Development Handoff
 
-Last updated: after Task 12 (packet lane visualization).
+Last updated: after Task 14 (backend integration).
 
 ## Current architecture
 
@@ -11,17 +11,17 @@ Two independently runnable halves, joined later by one HTTP contract:
   strategy interface + `CongestionSignal` vocabulary) ← `algorithms`
   (Tahoe, Reno, New Reno, Cubic) ← `simulation` (SimPy engine, seeded,
   algorithm-agnostic) ← `statistics` (pure derivation from event
-  timelines) ← `api` (FastAPI; only `/health` exists).
+  timelines) ← `api` (FastAPI: `/health`, `POST /simulations`).
 - **Frontend** (`frontend/`, Vite + React 19 + TS strict + Tailwind v4):
   `features/replay` (rAF ReplayEngine behind `useReplayClock` /
-  `useReplayControls`), `features/simulation` (camelCase timeline types
-  mirroring the backend domain + a temporary demo fixture),
-  `features/packets` (SVG flight lane + pure derivations),
-  `features/stats` (em-dash tiles), `components/layout` (three-rail
-  shell + transport bar), `lib/api` (fetch wrapper + health).
+  `useReplayControls`), `features/simulation` (timeline types, config +
+  validation, run state), `features/packets` (SVG flight lane + pure
+  derivations), `features/charts` (cwnd chart + pure derivations),
+  `features/stats` (run totals), `components/layout` (three-rail shell
+  + transport bar), `lib/api` (fetch wrapper, health, simulations).
 - **Contracts**: `docs/design/DESIGN_SPEC.md` (frontend, binding),
-  ADRs 0001–0003 (backend architecture), `docs/planning/` (original
-  scope).
+  ADRs 0001–0004 (backend architecture and the wire contract),
+  `docs/planning/` (original scope).
 
 ## Completed tasks
 
@@ -45,32 +45,22 @@ Two independently runnable halves, joined later by one HTTP contract:
     fixture).
 13. Congestion window chart (§14: Recharts, phase bands, shape-coded
     loss markers, ghost future, hover inspection, sr-only data table).
+14. Backend integration: `POST /simulations`, phase reporting (ADR
+    0004), config panel with validation, loading/error states; the
+    demo fixture is gone.
 
 ## Remaining tasks
 
-- **Backend simulation API**: `POST` endpoint accepting config
-  (algorithm, link, transfer, seed), returning the full timeline +
-  statistics as JSON; Pydantic schemas at the API boundary only.
-  **Also emit the algorithm's phase** on congestion-window-change
-  events: DESIGN_SPEC §14 phase bands need it, and the frontend must
-  not re-derive it (that would duplicate algorithm rules and needs
-  private ssthresh). Every algorithm already exposes a `phase`
-  property, so the engine only has to record it. Exposing `ssthresh`
-  alongside would additionally unlock §14's optional ssthresh
-  step-line, which is omitted today for lack of data.
-- **Frontend integration**: API mapper (snake_case → `SimulationTimeline`),
-  simulation provider/run state, config rail controls + presets + Run
-  button, error/loading states per §12–13; **remove the demo fixture**
-  (`features/simulation/fixtures/` + one import in `Stage.tsx`).
 - **Charts** (§14): small multiples (throughput, RTT, ack progress) on
   the shared time axis, plus the synced crosshair and single combined
   tooltip across charts. (The cwnd chart itself is done.)
-- **Live statistics** (values-at-cursor into the existing StatTiles) and
-  the event inspector.
+- **Live statistics**: the rail shows whole-run totals; the
+  cursor-relative values of §2 step 4 and the event inspector remain.
 - **Comparison mode** (§15): multi-algorithm runs, shared seed enforced,
   overlay + small-multiples, Δ table.
 - Config-in-URL sharing, export (PNG/CSV/JSON), remaining shortcuts
-  (Shift+←/→, 1–8, C, R), density aggregation for >60 packets.
+  (Shift+←/→, 1–8, C, R), density aggregation for >60 packets,
+  presets (§2).
 - CI (GitHub Actions), Docker, deployment; BBR (future, per ADR 0003).
 
 ## Architectural invariants (do not violate)
@@ -108,30 +98,38 @@ Two independently runnable halves, joined later by one HTTP contract:
 - Frontend lane: data-leg/ACK-leg split is a fixed 0.6/0.4 visual
   convention; loss marks fade to a 20% scar; 60-packet render cap.
 - Frontend chart: §14's optional ssthresh step-line is omitted — the
-  domain model carries no ssthresh (see the API task above). Recharts'
-  built-in animations are disabled everywhere so the ReplayClock is
-  the only source of motion.
-- The lane and chart currently run on one deterministic **demo
-  fixture**, clearly marked, standing in for the API.
+  domain model carries no ssthresh (ADR 0004). Recharts' built-in
+  animations are disabled everywhere so the ReplayClock is the only
+  source of motion.
+- API bounds are tighter than the domain's (ADR 0004): loss
+  probability is capped at 0.5, since a link dropping every packet
+  would retransmit forever. Link bandwidth is fixed at 1 MB/s in the
+  UI and is not an exposed control.
 
 ## Current state
 
-- **Backend**: 128 tests green under `pytest`, `mypy --strict`, `black`
-  (venv at `backend/.venv`). Four algorithms complete. No simulation
-  endpoint yet — `/health` only.
+- **Backend**: 158 tests green under `pytest`, `mypy --strict`, `black`
+  (venv at `backend/.venv`). Four algorithms complete;
+  `POST /simulations` serves real runs. Start it with
+  `backend/.venv/bin/uvicorn tcp_visualizer.main:app --port 8000`.
 - **Frontend**: builds clean (`npm run format|lint|build` in
   `frontend/`). Shell, theme, replay engine, transport, keyboard layer,
-  packet lane, and congestion window chart all functional against the
-  fixture; small multiples and stats values intentionally empty. The
+  packet lane, congestion window chart, config panel, and run-total
+  statistics all functional against the live backend (`npm run dev`
+  proxies `/api` to port 8000); small multiples and cursor-relative
+  statistics are still to come. The
   bundle is ~576 kB (Recharts dominates); code-splitting is available
   if that ever matters. No test runner installed yet (Vitest planned
   per TECH_STACK).
 
 ## Recommended next task
 
-**Backend simulation API + frontend integration** — expose
-`POST /simulations` (config in, timeline + statistics out), map it into
-`SimulationTimeline`, build the config rail controls, and delete the
-fixture. Doing this before charts means the cwnd chart and statistics
-are built against real data with real error/loading states, and the
-comparison work inherits a finished single-run pipeline.
+**Comparison mode (§15)** — the single-run pipeline is complete, so the
+natural next step is running several algorithms against one shared seed
+and link, overlaying their windows in identity colors, and adding the
+comparison table. Everything it needs already exists: the API is
+deterministic per configuration, and both visualizations already take a
+timeline as a prop.
+
+Alternatively, **cursor-relative statistics and the event inspector**
+is a smaller, self-contained piece of the same journey (§2 step 4).

@@ -1,45 +1,36 @@
-import { useEffect } from 'react'
-
 import { CwndChart } from '../../features/charts/CwndChart'
 import { PacketLane } from '../../features/packets/PacketLane'
-import { useReplayControls } from '../../features/replay/useReplayControls'
-// TEMPORARY: demo fixture until backend integration; see fixtures/demoTimeline.ts.
-import { DEMO_TIMELINE } from '../../features/simulation/fixtures/demoTimeline'
-import { uniqueEventTimestamps } from '../../features/simulation/timeline'
-import type { SimulationTimeline } from '../../features/simulation/timeline'
+import { useSimulation } from '../../features/simulation/useSimulation'
 import { Kbd } from '../ui/Kbd'
 
 /**
- * Center stage — the visualization surface (§4): the packet lane on
- * top; the cwnd chart and small multiples mount below in later tasks.
- * With no timeline, renders the designed first-run empty state (§11).
+ * Center stage — the visualization surface (§4): the packet lane above
+ * the congestion window chart. With no run yet, the designed first-run
+ * empty state (§11). While a run is in flight the previous one stays
+ * visible, dimmed (§12).
  */
 export function Stage() {
-  const { loadTimeline, play } = useReplayControls()
-  const timeline: SimulationTimeline | null = DEMO_TIMELINE
+  const { run, showLoading } = useSimulation()
 
-  useEffect(() => {
-    if (timeline === null) {
-      return
-    }
-    // Replay begins automatically once a run is available (§2).
-    loadTimeline(timeline.durationSeconds, uniqueEventTimestamps(timeline.events))
-    play()
-  }, [timeline, loadTimeline, play])
-
-  if (timeline === null) {
+  if (run === null) {
     return <EmptyStage />
   }
 
   return (
-    <main aria-label="Visualization stage" className="flex h-full min-h-0 flex-col">
+    <main
+      aria-label="Visualization stage"
+      aria-busy={showLoading}
+      className={`flex h-full min-h-0 flex-col transition-opacity duration-150 ${
+        showLoading ? 'opacity-85' : ''
+      }`}
+    >
       <section aria-label="Packet flight lane" className="border-b border-edge px-6 pt-4 pb-2">
         <div className="mx-auto max-w-4xl">
-          <PacketLane timeline={timeline} />
+          <PacketLane timeline={run.timeline} />
         </div>
       </section>
       <section aria-label="Congestion window" className="min-h-[240px] flex-1 px-6 pt-3 pb-4">
-        <CwndChart timeline={timeline} />
+        <CwndChart timeline={run.timeline} />
       </section>
       {/* Small multiples (throughput, RTT, ack progress) mount below (§14). */}
     </main>
@@ -47,11 +38,21 @@ export function Stage() {
 }
 
 function EmptyStage() {
+  const { runSimulation, showLoading, firstErrorField } = useSimulation()
+
   return (
     <main aria-label="Visualization stage" className="flex h-full items-center justify-center p-6">
       <div className="flex max-w-md flex-col items-center gap-6 text-center">
         <SawtoothSketch />
         <p className="text-section text-fg-muted">Simulate how TCP decides how fast to send.</p>
+        <button
+          type="button"
+          disabled={showLoading || firstErrorField !== null}
+          onClick={runSimulation}
+          className="rounded bg-raised px-4 py-2 text-ui font-medium text-fg transition-colors duration-150 hover:bg-edge disabled:text-fg-faint"
+        >
+          {showLoading ? 'Running…' : 'Run simulation'}
+        </button>
         <p className="text-label text-fg-faint">
           Press <Kbd>?</Kbd> for keyboard shortcuts
         </p>

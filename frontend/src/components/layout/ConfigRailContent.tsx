@@ -1,20 +1,23 @@
+import { ConfigPanel } from '../../features/simulation/ConfigPanel'
 import { useTheme } from '../../features/theme/useTheme'
 
 /**
  * Inner content of the configuration rail, shared between the desktop
- * aside and the small-viewport drawer (§17). Foundation scope: app
- * identity and the theme control; algorithm/link/transfer controls
- * arrive with the simulation task.
+ * aside and the small-viewport drawer (§17). The configuration draft
+ * itself lives in the simulation provider, so both instances edit one
+ * form.
  */
 export function ConfigRailContent() {
   const { theme, toggleTheme } = useTheme()
 
   return (
-    <div className="flex h-full flex-col p-4">
+    <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
       <header>
         <h1 className="text-section font-semibold text-fg">TCP Congestion Control</h1>
         <p className="mt-1 text-label text-fg-muted">Visualizer</p>
       </header>
+
+      <ConfigPanel />
 
       <div className="flex-1" />
 

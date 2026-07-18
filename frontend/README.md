@@ -26,7 +26,8 @@ src/
 ├── features/       One folder per capability; components + state + logic
 │   ├── packets/    SVG packet flight lane + pure timeline derivations
 │   ├── replay/     ReplayClock contract, engine, and provider (the shared cursor)
-│   ├── simulation/ Timeline types mirroring the backend domain (+ temporary demo fixture)
+│   ├── charts/     Congestion window chart + pure derivations
+│   ├── simulation/ Timeline types, configuration + validation, run state
 │   ├── stats/      Stat tiles (em-dash empty state until live data)
 │   └── theme/      Dark/light theme state (dark-first)
 ├── lib/
@@ -35,7 +36,11 @@ src/
 ```
 
 Planned feature folders (added with their tasks, never speculatively):
-`features/charts`, `features/comparison`.
+`features/comparison`.
+
+The dev server proxies `/api` to the FastAPI backend on port 8000, so
+run `backend/.venv/bin/uvicorn tcp_visualizer.main:app --port 8000`
+alongside `npm run dev`.
 
 ## Conventions
 

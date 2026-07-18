@@ -1,16 +1,10 @@
-"""Congestion-control phases shared by the Reno-family algorithms."""
+"""Congestion-control phases.
 
-from enum import StrEnum
+The enum lives in the domain because the strategy interface reports it;
+this module re-exports it so algorithm code can keep importing it from
+alongside the algorithms.
+"""
 
+from tcp_visualizer.domain.phase import CongestionPhase
 
-class CongestionPhase(StrEnum):
-    """The growth regime a window-based algorithm is currently operating in.
-
-    ``FAST_RECOVERY`` is only reported by algorithms whose recovery spans
-    time (New Reno); Reno's recovery is instantaneous in this model and is
-    never observable as a phase.
-    """
-
-    SLOW_START = "slow_start"
-    CONGESTION_AVOIDANCE = "congestion_avoidance"
-    FAST_RECOVERY = "fast_recovery"
+__all__ = ["CongestionPhase"]

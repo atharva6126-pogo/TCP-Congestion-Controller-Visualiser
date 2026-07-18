@@ -12,6 +12,7 @@ from tcp_visualizer.domain.events import SimulationEvent, SimulationEventType
 from tcp_visualizer.domain.link import Link
 from tcp_visualizer.domain.node import Node, NodeRole
 from tcp_visualizer.domain.packet import Packet
+from tcp_visualizer.domain.phase import CongestionPhase
 from tcp_visualizer.domain.result import SimulationResult
 from tcp_visualizer.domain.signals import (
     AckReceived,
@@ -23,6 +24,7 @@ from tcp_visualizer.domain.signals import (
 __all__ = [
     "AckReceived",
     "CongestionControlAlgorithm",
+    "CongestionPhase",
     "CongestionSignal",
     "DomainError",
     "Link",

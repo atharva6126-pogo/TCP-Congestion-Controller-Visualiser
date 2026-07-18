@@ -226,6 +226,7 @@ def _transmit_packet(
                 event_type=SimulationEventType.CONGESTION_WINDOW_CHANGED,
                 node=config.sender,
                 congestion_window_segments=algorithm.congestion_window_segments,
+                phase=algorithm.phase,
             )
         )
         on_complete(sequence_index, delivered=False)
@@ -254,6 +255,7 @@ def _transmit_packet(
                 event_type=SimulationEventType.CONGESTION_WINDOW_CHANGED,
                 node=config.sender,
                 congestion_window_segments=algorithm.congestion_window_segments,
+                phase=algorithm.phase,
             )
         )
         on_complete(sequence_index, delivered=True)

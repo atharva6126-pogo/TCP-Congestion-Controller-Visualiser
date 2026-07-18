@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 
+from tcp_visualizer.domain.phase import CongestionPhase
 from tcp_visualizer.domain.signals import CongestionSignal
 
 
@@ -35,3 +36,15 @@ class CongestionControlAlgorithm(ABC):
     @abstractmethod
     def on_signal(self, signal: CongestionSignal) -> None:
         """Update state in response to an observed network signal."""
+
+    @property
+    def phase(self) -> CongestionPhase | None:
+        """The growth regime currently in effect, for observability.
+
+        Optional by design: this is reported alongside congestion window
+        changes so consumers can visualize *why* the window is moving,
+        but it is not part of the control contract and never influences
+        the simulation. Algorithms without a meaningful window-growth
+        regime leave it as ``None``.
+        """
+        return None

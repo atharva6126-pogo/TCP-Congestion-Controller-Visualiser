@@ -6,6 +6,7 @@ import { useGlobalShortcuts } from '../../lib/useGlobalShortcuts'
 import { Dialog } from '../ui/Dialog'
 import { ConfigRail } from './ConfigRail'
 import { ConfigRailContent } from './ConfigRailContent'
+import { FailureBanner } from './FailureBanner'
 import { HelpOverlay } from './HelpOverlay'
 import { Stage } from './Stage'
 import { StatsRail } from './StatsRail'
@@ -60,7 +61,7 @@ export function AppShell() {
     : 'lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_300px]'
 
   return (
-    <div className="grid h-dvh grid-rows-[minmax(0,1fr)_auto]">
+    <div className="grid h-dvh grid-rows-[minmax(0,1fr)_auto_auto]">
       <div
         className={`grid min-h-0 grid-cols-1 transition-[grid-template-columns] duration-200 ease-out ${columns}`}
       >
@@ -70,6 +71,7 @@ export function AppShell() {
         <Stage />
         <StatsRail />
       </div>
+      <FailureBanner />
       <TransportBar
         onOpenConfigDrawer={() => {
           setConfigDrawerOpen(true)
