@@ -9,6 +9,17 @@ export type AlgorithmName = 'tahoe' | 'reno' | 'new_reno' | 'cubic'
 export type SimulationEventType =
   'packet_sent' | 'packet_acknowledged' | 'packet_lost' | 'congestion_window_changed'
 
+/**
+ * Growth regime reported by the algorithm, mirroring the backend's
+ * CongestionPhase enum. Only algorithms whose recovery spans time
+ * (New Reno) ever report `fast_recovery`.
+ *
+ * Phase is supplied by the backend rather than derived here: deriving
+ * it would mean reimplementing each algorithm's rules against private
+ * state (ssthresh, recovery markers) in the frontend.
+ */
+export type CongestionPhase = 'slow_start' | 'congestion_avoidance' | 'fast_recovery'
+
 export interface PacketRef {
   /** Byte offset of the packet's first byte in the stream. */
   sequenceNumber: number
@@ -30,6 +41,8 @@ export interface SimulationEvent {
   eventType: SimulationEventType
   packet?: PacketRef
   congestionWindowSegments?: number
+  /** Present on congestion-window-change events. */
+  phase?: CongestionPhase
   signal?: CongestionSignal
 }
 

@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 
 import { useReplayClock } from '../replay/useReplayClock'
+import { ALGORITHM_TEXT_CLASS } from '../simulation/algorithmColors'
 import { latestTimestampAtOrBefore, uniqueEventTimestamps } from '../simulation/timeline'
-import type { AlgorithmName, SimulationTimeline } from '../simulation/timeline'
+import type { SimulationTimeline } from '../simulation/timeline'
 import { useReducedMotion } from '../../lib/useReducedMotion'
 import { buildTransmissions, packetVisualAt, segmentRunsAt } from './transmissions'
 import type { PacketVisual, SegmentState, Transmission } from './transmissions'
@@ -35,13 +36,6 @@ const DATA_RADIUS = 6
 const ACK_RADIUS = 4
 /** Legibility cap from §16; beyond this, density aggregation is future work. */
 const MAX_RENDERED_PACKETS = 60
-
-const ALGORITHM_TEXT_CLASS: Record<AlgorithmName, string> = {
-  tahoe: 'text-algo-tahoe',
-  reno: 'text-algo-reno',
-  new_reno: 'text-algo-new-reno',
-  cubic: 'text-algo-cubic',
-}
 
 const SEGMENT_FILL: Record<SegmentState, string> = {
   delivered: 'currentColor',

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 
+import { CwndChart } from '../../features/charts/CwndChart'
 import { PacketLane } from '../../features/packets/PacketLane'
 import { useReplayControls } from '../../features/replay/useReplayControls'
 // TEMPORARY: demo fixture until backend integration; see fixtures/demoTimeline.ts.
@@ -37,8 +38,10 @@ export function Stage() {
           <PacketLane timeline={timeline} />
         </div>
       </section>
-      {/* The cwnd chart and small multiples (§14) mount here. */}
-      <div className="min-h-0 flex-1" />
+      <section aria-label="Congestion window" className="min-h-[240px] flex-1 px-6 pt-3 pb-4">
+        <CwndChart timeline={timeline} />
+      </section>
+      {/* Small multiples (throughput, RTT, ack progress) mount below (§14). */}
     </main>
   )
 }

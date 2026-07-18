@@ -43,19 +43,28 @@ Two independently runnable halves, joined later by one HTTP contract:
     minimal re-rendering via external store).
 12. Packet lane (§16: lane + sequence strip, pure time-derived, demo
     fixture).
+13. Congestion window chart (§14: Recharts, phase bands, shape-coded
+    loss markers, ghost future, hover inspection, sr-only data table).
 
 ## Remaining tasks
 
 - **Backend simulation API**: `POST` endpoint accepting config
   (algorithm, link, transfer, seed), returning the full timeline +
   statistics as JSON; Pydantic schemas at the API boundary only.
+  **Also emit the algorithm's phase** on congestion-window-change
+  events: DESIGN_SPEC §14 phase bands need it, and the frontend must
+  not re-derive it (that would duplicate algorithm rules and needs
+  private ssthresh). Every algorithm already exposes a `phase`
+  property, so the engine only has to record it. Exposing `ssthresh`
+  alongside would additionally unlock §14's optional ssthresh
+  step-line, which is omitted today for lack of data.
 - **Frontend integration**: API mapper (snake_case → `SimulationTimeline`),
   simulation provider/run state, config rail controls + presets + Run
   button, error/loading states per §12–13; **remove the demo fixture**
   (`features/simulation/fixtures/` + one import in `Stage.tsx`).
-- **Charts** (§14): Recharts cwnd chart with phase bands, loss markers
-  (shape-coded), ghost-future replay; small multiples (throughput, RTT,
-  ack progress) on the shared axis.
+- **Charts** (§14): small multiples (throughput, RTT, ack progress) on
+  the shared time axis, plus the synced crosshair and single combined
+  tooltip across charts. (The cwnd chart itself is done.)
 - **Live statistics** (values-at-cursor into the existing StatTiles) and
   the event inspector.
 - **Comparison mode** (§15): multi-algorithm runs, shared seed enforced,
@@ -98,8 +107,12 @@ Two independently runnable halves, joined later by one HTTP contract:
   window follows the cubic curve directly.
 - Frontend lane: data-leg/ACK-leg split is a fixed 0.6/0.4 visual
   convention; loss marks fade to a 20% scar; 60-packet render cap.
-- The lane currently runs on a deterministic **demo fixture**, clearly
-  marked, standing in for the API.
+- Frontend chart: §14's optional ssthresh step-line is omitted — the
+  domain model carries no ssthresh (see the API task above). Recharts'
+  built-in animations are disabled everywhere so the ReplayClock is
+  the only source of motion.
+- The lane and chart currently run on one deterministic **demo
+  fixture**, clearly marked, standing in for the API.
 
 ## Current state
 
@@ -108,9 +121,11 @@ Two independently runnable halves, joined later by one HTTP contract:
   endpoint yet — `/health` only.
 - **Frontend**: builds clean (`npm run format|lint|build` in
   `frontend/`). Shell, theme, replay engine, transport, keyboard layer,
-  and packet lane all functional against the fixture; charts area and
-  stats values intentionally empty. No test runner installed yet
-  (Vitest planned per TECH_STACK).
+  packet lane, and congestion window chart all functional against the
+  fixture; small multiples and stats values intentionally empty. The
+  bundle is ~576 kB (Recharts dominates); code-splitting is available
+  if that ever matters. No test runner installed yet (Vitest planned
+  per TECH_STACK).
 
 ## Recommended next task
 
